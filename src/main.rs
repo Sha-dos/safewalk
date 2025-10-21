@@ -2,7 +2,6 @@ mod overpass;
 
 use crate::overpass::{OverpassResponse, Point, fetch};
 use anyhow::Result;
-use reqwest;
 use std::env;
 use std::path::PathBuf;
 use tokio::fs::read_to_string;

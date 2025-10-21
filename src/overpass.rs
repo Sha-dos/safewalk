@@ -6,7 +6,7 @@ use std::path::PathBuf;
 use tokio::fs::write;
 
 #[derive(Debug, Deserialize, Serialize)]
-pub(crate) struct OverpassResponse {
+pub struct OverpassResponse {
     pub version: f64,
     pub generator: String,
     pub osm3s: Osm3s,
@@ -14,9 +14,9 @@ pub(crate) struct OverpassResponse {
 }
 
 #[derive(Debug, Deserialize, Serialize)]
-struct Osm3s {
-    timestamp_osm_base: String,
-    copyright: String,
+pub struct Osm3s {
+    pub timestamp_osm_base: String,
+    pub copyright: String,
 }
 
 #[derive(Debug, Deserialize, Serialize)]
