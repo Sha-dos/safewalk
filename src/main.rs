@@ -1,6 +1,9 @@
+mod overpass;
+
 use reqwest;
 use serde_json::Value;
 use anyhow::Result;
+use crate::overpass::OverpassResponse;
 
 #[tokio::main]
 async fn main() -> Result<()> {
@@ -51,8 +54,8 @@ async fn main() -> Result<()> {
         .await?;
 
     if response.status().is_success() {
-        let data: Value = response.json().await?;
-        println!("{:#?}", data);
+        let data: OverpassResponse = response.json().await?;
+        // println!("Retrieved {} objects from Overpass API", data.objects.len());
     } else {
         eprintln!("Error: Query failed with status: {}", response.status());
         eprintln!("Response body: {}", response.text().await?);
