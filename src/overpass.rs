@@ -1,5 +1,9 @@
-use std::collections::HashMap;
+use crate::bbox;
+use anyhow::{Error, anyhow};
 use serde::{Deserialize, Serialize};
+use std::collections::HashMap;
+use std::path::PathBuf;
+use tokio::fs::write;
 
 #[derive(Debug, Deserialize, Serialize)]
 pub(crate) struct OverpassResponse {
@@ -27,7 +31,7 @@ pub enum Element {
         tags: HashMap<String, String>,
     },
     Way {
-        bounds: OverpassBounds, 
+        bounds: OverpassBounds,
         geometry: Vec<Point>,
         id: u64,
         nodes: Option<Vec<u64>>,
@@ -67,4 +71,77 @@ pub struct OverpassBounds {
     pub min_lat: f64,
     #[serde(rename = "minlon")]
     pub min_lon: f64,
+}
+
+pub async fn fetch() -> Result<OverpassResponse, Error> {
+    let overpass_url = "https://overpass-api.de/api/interpreter";
+
+    let bbox = bbox(33.475, -111.875, 0.0355);
+
+    let bbox_str = bbox
+        .iter()
+        .map(|p| format!("{},{}", p.lat, p.lon))
+        .collect::<Vec<String>>()
+        .join(",");
+
+    let overpass_query = format!(
+        r#"
+        [out:json][timeout:25][bbox:{}];
+        (
+          // --- 1. Crossings with signals but NO audible/vibration aids ---
+          node["highway"="traffic_signals"];
+          (._;)->.crossings_with_signals;
+          node.crossings_with_signals["traffic_signals:sound"="no"];
+          node.crossings_with_signals["traffic_signals:vibration"="no"];
+          node.crossings_with_signals[!"traffic_signals:sound"][!"traffic_signals:vibration"];
+
+          // --- 2. Uncontrolled or unmarked crossings ---
+          node["highway"="crossing"]["crossing"~"uncontrolled|unmarked"];
+
+          // --- 3. Raised kerbs (potential trip hazards) ---
+          node["kerb"="raised"];
+
+          // --- 4. Uneven or unpaved footpaths/sidewalks ---
+          way["highway"~"footway|sidewalk|path"]["surface"~"unpaved|gravel|dirt|sand|ground"];
+
+          // --- 5. Generic hazards ---
+          node["hazard"];
+          way["hazard"];
+
+          // --- 6. Lack of or incorrect tactile paving ---
+          node["tactile_paving"="no"];
+          node["tactile_paving"="incorrect"];
+          way["tactile_paving"="no"];
+          way["tactile_paving"="incorrect"];
+        );
+        out geom;
+    "#,
+        bbox_str
+    );
+
+    let client = reqwest::Client::builder()
+        .user_agent("safewalk/0.1.0")
+        .build()?;
+
+    let response = client
+        .post(overpass_url)
+        .body(overpass_query)
+        .send()
+        .await?;
+
+    if response.status().is_success() {
+        let data: OverpassResponse = response.json().await?;
+
+        let out_path = PathBuf::from("out.json");
+        let out_data = serde_json::to_string_pretty(&data)?;
+        write(out_path, out_data).await?;
+
+        Ok(data)
+    } else {
+        Err(anyhow!(
+            "Query failed with status: {}\n Response body: {}",
+            response.status(),
+            response.text().await?
+        ))
+    }
 }
