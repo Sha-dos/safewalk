@@ -75,8 +75,8 @@ pub struct OverpassBounds {
 
 pub async fn fetch() -> Result<OverpassResponse, Error> {
     let overpass_url = "https://overpass-api.de/api/interpreter";
-
-    let bbox = bbox(33.475, -111.875, 0.0355);
+    
+    let bbox = bbox(33.423322, -111.932648, 0.015);
 
     let bbox_str = bbox
         .iter()

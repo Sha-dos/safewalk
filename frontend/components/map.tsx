@@ -5,7 +5,7 @@ import "leaflet-defaulticon-compatibility";
 import type { LatLngExpression } from "leaflet";
 import { useEffect, useState } from "react";
 
-const center: LatLngExpression = [33.475, -111.875];
+const center: LatLngExpression = [33.423322, -111.932648];
 
 type OsmElement = {
   type: string;
