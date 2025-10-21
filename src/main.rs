@@ -13,7 +13,7 @@ async fn main() -> Result<()> {
 
     // let bbox = "33.42,-111.98,33.53,-111.97";
 
-    let bbox = bbox(33.475, -111.875, 0.0155);
+    let bbox = bbox(33.475, -111.875, 0.0355);
 
     let bbox_str = bbox.iter().map(|p| format!("{},{}", p.lat, p.lon)).collect::<Vec<String>>().join(",");
 
@@ -61,13 +61,12 @@ async fn main() -> Result<()> {
 
     if response.status().is_success() {
         let data: OverpassResponse = response.json().await?;
+        
+        let out_path = PathBuf::from("out.json");
+        let out_data = serde_json::to_string_pretty(&data)?;
+        write(out_path, out_data).await?;
 
-        // write(PathBuf::from("out.json"), response.text().await?.as_bytes()).await?;
-
-        // println!("Retrieved {} objects from Overpass API", data.objects.len());
-
-        // println!("Nodes: {}", data.nodes.len());
-        // println!("Ways: {}", data.ways.len());
+        println!("Fetched {} elements", data.elements.len());
 
         // println!("{:?}", data.ways.first().unwrap().tags);
     } else {

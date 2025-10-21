@@ -3,10 +3,10 @@ use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Deserialize, Serialize)]
 pub(crate) struct OverpassResponse {
-    version: f64,
-    generator: String,
-    osm3s: Osm3s,
-    elements: Vec<Element>,
+    pub version: f64,
+    pub generator: String,
+    pub osm3s: Osm3s,
+    pub elements: Vec<Element>,
 }
 
 #[derive(Debug, Deserialize, Serialize)]
@@ -18,7 +18,7 @@ struct Osm3s {
 #[derive(Debug, Deserialize, Serialize)]
 #[serde(tag = "type")]
 #[serde(rename_all = "lowercase")]
-enum Element {
+pub enum Element {
     Node {
         id: u64,
         lat: f64,
