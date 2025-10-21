@@ -1,42 +1,70 @@
 use std::collections::HashMap;
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 
-#[derive(Debug, Deserialize)]
-pub struct OverpassResponse {
-    pub nodes: Vec<OverpassNode>,
-    pub ways: Vec<OverpassWay>,
+#[derive(Debug, Deserialize, Serialize)]
+pub(crate) struct OverpassResponse {
+    version: f64,
+    generator: String,
+    osm3s: Osm3s,
+    elements: Vec<Element>,
 }
 
-#[derive(Debug, Deserialize)]
-pub struct OverpassNode {
-    id: u64,
-    lat: f64,
-    lon: f64,
-    tags: HashMap<String, String>,
+#[derive(Debug, Deserialize, Serialize)]
+struct Osm3s {
+    timestamp_osm_base: String,
+    copyright: String,
 }
 
-#[derive(Debug, Deserialize)]
-pub struct OverpassWay {
-    bounds: OverpassBounds,
-    geometry: Vec<Point>,
-    id: u64,
-    nodes: Vec<u64>,
+#[derive(Debug, Deserialize, Serialize)]
+#[serde(tag = "type")]
+#[serde(rename_all = "lowercase")]
+enum Element {
+    Node {
+        id: u64,
+        lat: f64,
+        lon: f64,
+        #[serde(default)]
+        tags: HashMap<String, String>,
+    },
+    Way {
+        bounds: OverpassBounds, 
+        geometry: Vec<Point>,
+        id: u64,
+        nodes: Option<Vec<u64>>,
+        #[serde(default)]
+        tags: HashMap<String, String>,
+    },
+    Relation {
+        id: u64,
+        members: Vec<Member>,
+        #[serde(default)]
+        tags: HashMap<String, String>,
+    },
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, Serialize)]
+struct Member {
+    #[serde(rename = "type")]
+    member_type: String,
+    #[serde(rename = "ref")]
+    reference: u64,
+    role: String,
+}
+
+#[derive(Debug, Deserialize, Serialize)]
 pub struct Point {
-    lat: f64,
-    lon: f64,
+    pub lat: f64,
+    pub lon: f64,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, Serialize)]
 pub struct OverpassBounds {
     #[serde(rename = "maxlat")]
-    max_lat: f64,
+    pub max_lat: f64,
     #[serde(rename = "maxlon")]
-    max_lon: f64,
+    pub max_lon: f64,
     #[serde(rename = "minlat")]
-    min_lat: f64,
+    pub min_lat: f64,
     #[serde(rename = "minlon")]
-    min_lon: f64,
+    pub min_lon: f64,
 }

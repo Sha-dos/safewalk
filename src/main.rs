@@ -1,15 +1,21 @@
 mod overpass;
 
+use std::path::PathBuf;
 use reqwest;
 use serde_json::Value;
 use anyhow::Result;
-use crate::overpass::OverpassResponse;
+use tokio::fs::write;
+use crate::overpass::{OverpassResponse, Point};
 
 #[tokio::main]
 async fn main() -> Result<()> {
     let overpass_url = "https://overpass-api.de/api/interpreter";
 
-    let bbox = "33.42,-111.98,33.53,-111.97";
+    // let bbox = "33.42,-111.98,33.53,-111.97";
+
+    let bbox = bbox(33.475, -111.875, 0.0155);
+
+    let bbox_str = bbox.iter().map(|p| format!("{},{}", p.lat, p.lon)).collect::<Vec<String>>().join(",");
 
     let overpass_query = format!(r#"
         [out:json][timeout:25][bbox:{}];
@@ -41,7 +47,7 @@ async fn main() -> Result<()> {
           way["tactile_paving"="incorrect"];
         );
         out geom;
-    "#, bbox);
+    "#, bbox_str);
 
     let client = reqwest::Client::builder()
         .user_agent("safewalk/0.1.0")
@@ -55,11 +61,40 @@ async fn main() -> Result<()> {
 
     if response.status().is_success() {
         let data: OverpassResponse = response.json().await?;
+
+        // write(PathBuf::from("out.json"), response.text().await?.as_bytes()).await?;
+
         // println!("Retrieved {} objects from Overpass API", data.objects.len());
+
+        // println!("Nodes: {}", data.nodes.len());
+        // println!("Ways: {}", data.ways.len());
+
+        // println!("{:?}", data.ways.first().unwrap().tags);
     } else {
         eprintln!("Error: Query failed with status: {}", response.status());
         eprintln!("Response body: {}", response.text().await?);
     }
 
     Ok(())
+}
+
+fn bbox(lat: f64, lon: f64, delta: f64) -> [Point; 2] {
+    [
+        Point { lat: lat - delta, lon: lon - delta },
+        Point { lat: lat + delta, lon: lon + delta }
+    ]
+}
+
+#[cfg(test)]
+mod tests {
+    use std::fs;
+    use std::path::PathBuf;
+    use crate::overpass::OverpassResponse;
+
+    #[test]
+    fn parse_response() {
+        let data = fs::read_to_string(PathBuf::from("out.json")).unwrap();
+        
+        serde_json::from_str::<OverpassResponse>(&data).unwrap();
+    }
 }
