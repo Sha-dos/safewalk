@@ -1,4 +1,5 @@
 mod overpass;
+mod hazard_analyzer;
 
 use crate::overpass::{OverpassResponse, Point, fetch};
 use anyhow::Result;
