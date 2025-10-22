@@ -87,34 +87,47 @@ pub async fn fetch() -> Result<OverpassResponse, Error> {
     let overpass_query = format!(
         r#"
         [out:json][timeout:25][bbox:{}];
-        (
-          // --- 1. Crossings with signals but NO audible/vibration aids ---
-          node["highway"="traffic_signals"];
-          (._;)->.crossings_with_signals;
-          node.crossings_with_signals["traffic_signals:sound"="no"];
-          node.crossings_with_signals["traffic_signals:vibration"="no"];
-          node.crossings_with_signals[!"traffic_signals:sound"][!"traffic_signals:vibration"];
 
-          // --- 2. Uncontrolled or unmarked crossings ---
-          node["highway"="crossing"]["crossing"~"uncontrolled|unmarked"];
+(
+  // --- 1. Crossings with signals but NO audible/vibration aids ---
+  node["highway"="traffic_signals"]
+    (if:!t["traffic_signals:sound"] || t["traffic_signals:sound"] == "no")
+    (if:!t["traffic_signals:vibration"] || t["traffic_signals:vibration"] == "no");
 
-          // --- 3. Raised kerbs (potential trip hazards) ---
-          node["kerb"="raised"];
+  // --- 2. Crossings missing tactile paving or with incorrect tactile paving ---
+  node["highway"="crossing"]["tactile_paving"~"no|incorrect"];
+  way["highway"="crossing"]["tactile_paving"~"no|incorrect"];
 
-          // --- 4. Uneven or unpaved footpaths/sidewalks ---
-          way["highway"~"footway|sidewalk|path"]["surface"~"unpaved|gravel|dirt|sand|ground"];
+  // --- 3. Uncontrolled or unmarked crossings ---
+  node["highway"="crossing"]["crossing"~"uncontrolled|unmarked"];
+  node["highway"="crossing"][!"crossing"]; // crossings with no type defined
 
-          // --- 5. Generic hazards ---
-          node["hazard"];
-          way["hazard"];
+  // --- 4. Raised kerbs ---
+  node["kerb"="raised"];
+  way["kerb"="raised"];
 
-          // --- 6. Lack of or incorrect tactile paving ---
-          node["tactile_paving"="no"];
-          node["tactile_paving"="incorrect"];
-          way["tactile_paving"="no"];
-          way["tactile_paving"="incorrect"];
-        );
-        out geom;
+  // --- 5. Missing kerb ramps ---
+  node["kerb"="no"];
+  node["kerb"="unknown"];
+  node["highway"="crossing"][!"kerb"];
+
+  // --- 6. Uneven or unpaved sidewalks / footpaths ---
+  way["highway"~"footway|sidewalk|path|pedestrian"]["surface"~"unpaved|gravel|dirt|sand|ground|cobblestone|pebblestone|grass"];
+
+  // --- 7. Missing sidewalk ---
+  way["highway"~"primary|secondary|tertiary|residential"]["sidewalk"="no"];
+  way["highway"~"primary|secondary|tertiary|residential"][!"sidewalk"];
+
+  // --- 8. Generic hazards ---
+  node["hazard"];
+  way["hazard"];
+
+  // --- 9. Steps or stairs without tactile or handrail info ---
+  way["highway"="steps"][!"tactile_paving"];
+  way["highway"="steps"][!"handrail"];
+);
+
+out geom;
     "#,
         bbox_str
     );
