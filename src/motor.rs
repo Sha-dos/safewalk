@@ -1,71 +1,88 @@
-/*
-#!/usr/bin/env python3
-import RPi.GPIO as GPIO
-import time
-
-Buzzer = 11	# pin11
-
-def setup(pin):
-	global BuzzerPin
-	BuzzerPin = pin
-	GPIO.setmode(GPIO.BOARD)   	# Numbers GPIOs by physical location
-	GPIO.setup(BuzzerPin, GPIO.OUT)
-	GPIO.output(BuzzerPin, GPIO.HIGH)
-
-def on():
-	GPIO.output(BuzzerPin, GPIO.LOW)
-
-def off():
-	GPIO.output(BuzzerPin, GPIO.HIGH)
-
-def beep(x):
-	on()
-	time.sleep(x)
-	off()
-	time.sleep(x)
-
-def loop():
-	while True:
-    	beep(0.5)
-
-def destroy():
-	GPIO.output(BuzzerPin, GPIO.HIGH)
-	GPIO.cleanup()                 	# Release resource
-
-if __name__ == '__main__': 	# Program start from here
-	setup(Buzzer)
-	try:
-    		loop()
-	except KeyboardInterrupt:  # When 'Ctrl+C' is pressed, the child program destroy() will be  executed.
-    		destroy()
- */
+use std::error::Error;
 use std::time::Duration;
 use rppal::gpio::{Gpio, OutputPin};
 use tokio::time::sleep;
+use tokio::task::JoinHandle;
+use std::sync::Arc;
+use tokio::sync::Mutex;
 
+#[derive(Clone)]
 pub struct Motor {
-    pin: OutputPin,
+    state: Arc<Mutex<MotorState>>,
+    _handle: Arc<JoinHandle<()>>,
+}
+
+#[derive(Clone)]
+struct MotorState {
+    mode: MotorMode,
+    power: f64,
+}
+
+#[derive(Clone)]
+enum MotorMode {
+    Off,
+    On,
+    Pwm,
 }
 
 impl Motor {
-    pub fn new(pin: u8) -> Self {
-        let gpio = Gpio::new().expect("Failed to access GPIO");
-        let pin = gpio.get(pin).expect("Failed to get GPIO pin").into_output();
+    pub fn new(pin: u8) -> Result<Self, Box<dyn Error>> {
+        let state = Arc::new(Mutex::new(MotorState {
+            mode: MotorMode::Off,
+            power: 0.0,
+        }));
 
-        Motor { pin }
+        let state_clone = state.clone();
+        let gpio = Gpio::new()?;
+        let mut output_pin = gpio.get(pin)?.into_output();
+
+        let handle = tokio::spawn(async move {
+            loop {
+                let current_state = {
+                    state_clone.lock().await
+                };
+
+                match current_state.mode {
+                    MotorMode::Off => {
+                        output_pin.set_high();
+                        sleep(Duration::from_millis(10)).await;
+                    }
+                    MotorMode::On => {
+                        output_pin.set_low();
+                        sleep(Duration::from_millis(10)).await;
+                    }
+                    MotorMode::Pwm => {
+                        let on_duration = Duration::from_millis((current_state.power * 100.0) as u64);
+                        let off_duration = Duration::from_millis(((1.0 - current_state.power) * 100.0) as u64);
+
+                        output_pin.set_high();
+                        sleep(on_duration).await;
+                        output_pin.set_low();
+                        sleep(off_duration).await;
+                    }
+                }
+            }
+        });
+
+        Ok(Motor {
+            state,
+            _handle: Arc::new(handle),
+        })
     }
-    
-    pub fn on(&mut self) {
-        self.pin.set_low();
+
+    pub async fn on(&self) {
+        let mut state = self.state.lock().await;
+        state.mode = MotorMode::On;
     }
-    
-    pub fn off(&mut self) {
-        self.pin.set_high();
+
+    pub async fn off(&self) {
+        let mut state = self.state.lock().await;
+        state.mode = MotorMode::Off;
     }
-    
-    pub async fn beep(&mut self, duration: Duration) {
-        self.on();
-        sleep(duration).await;
-        self.off();
+
+    pub async fn set(&self, power: f64) {
+        let mut state = self.state.lock().await;
+        state.power = power;
+        state.mode = MotorMode::Pwm;
     }
 }
