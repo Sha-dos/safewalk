@@ -15,7 +15,7 @@ impl Button {
     }
     
     pub fn is_pressed(&self) -> bool {
-        self.pin.is_high()
+        self.pin.is_low()
     }
     
     pub async fn wait(&self) {

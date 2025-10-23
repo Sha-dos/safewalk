@@ -32,34 +32,25 @@ async fn main() -> Result<()> {
     // 
     // println!("Fetched {} elements", data.elements.len());
     
-    // let mut motor = Motor::new(17).unwrap();
-    // 
-    // let motor_clone = motor.clone();
-    // tokio::spawn(async move {
-    //     signal::ctrl_c().await.expect("Failed to listen for ctrl_c");
-    //     motor_clone.off().await;
-    //     std::process::exit(0);
-    // });
-    // 
-    // loop {
-    //     motor.set(0.25).await;
-    //     sleep(Duration::from_millis(1000)).await;
-    //     
-    //     motor.set(0.5).await;
-    //     sleep(Duration::from_millis(1000)).await;
-    // 
-    //     motor.set(0.75).await;
-    //     sleep(Duration::from_millis(1000)).await;
-    // 
-    //     motor.set(1.).await;
-    //     sleep(Duration::from_millis(1000)).await;
-    // }
+    let mut motor = Motor::new(17).unwrap();
     
+    let motor_clone = motor.clone();
+    tokio::spawn(async move {
+        signal::ctrl_c().await.expect("Failed to listen for ctrl_c");
+        motor_clone.off().await;
+        std::process::exit(0);
+    });
+
     let button = Button::new(21);
     
     loop {
-        button.wait().await;
-        println!("Button pressed!");
+        if button.is_pressed() {
+            motor.on().await;
+        } else {
+            motor.off().await;
+        }
+        
+        sleep(Duration::from_millis(50)).await;
     }
 
     Ok(())
