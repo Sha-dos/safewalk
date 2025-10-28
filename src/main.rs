@@ -2,17 +2,21 @@ mod overpass;
 mod hazard_analyzer;
 mod motor;
 mod button;
+mod safewalk;
 
 use crate::overpass::{OverpassResponse, Point, fetch};
 use anyhow::Result;
 use std::env;
 use std::path::PathBuf;
+use std::sync::Arc;
 use tokio::time::sleep;
 use std::time::Duration;
 use tokio::fs::read_to_string;
 use tokio::signal;
+use tokio::sync::Notify;
 use crate::button::Button;
 use crate::motor::Motor;
+use crate::safewalk::SafeWalk;
 
 #[tokio::main]
 async fn main() -> Result<()> {
@@ -32,25 +36,28 @@ async fn main() -> Result<()> {
     // 
     // println!("Fetched {} elements", data.elements.len());
     
-    let mut motor = Motor::new(17).unwrap();
-    
-    let motor_clone = motor.clone();
+    let mut safewalk = SafeWalk::new();
+
+    let shutdown = Arc::new(Notify::new());
+    let shutdown_clone = shutdown.clone();
+
     tokio::spawn(async move {
         signal::ctrl_c().await.expect("Failed to listen for ctrl_c");
-        motor_clone.off().await;
-        std::process::exit(0);
+        println!("Received Ctrl+C, shutting down...");
+        shutdown_clone.notify_one();
     });
 
-    let button = Button::new(21);
-    
-    loop {
-        if button.is_pressed() {
-            motor.on().await;
-        } else {
-            motor.off().await;
+    tokio::select! {
+        _ = shutdown.notified() => {
+            safewalk.stop().await;
+            sleep(Duration::from_millis(250)).await;
         }
-        
-        sleep(Duration::from_millis(50)).await;
+        result = safewalk.main() => {
+            match result {
+                Ok(_) => println!("SafeWalk finished"),
+                Err(e) => eprintln!("SafeWalk error: {}", e),
+            }
+        }
     }
 
     Ok(())

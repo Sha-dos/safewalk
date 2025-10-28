@@ -12,13 +12,13 @@ pub struct Motor {
     _handle: Arc<JoinHandle<()>>,
 }
 
-#[derive(Clone)]
+#[derive(Copy, Clone)]
 struct MotorState {
     mode: MotorMode,
     power: f64,
 }
 
-#[derive(Clone)]
+#[derive(Copy, Clone)]
 enum MotorMode {
     Off,
     On,
@@ -52,8 +52,8 @@ impl Motor {
                         sleep(Duration::from_millis(10)).await;
                     }
                     MotorMode::Pwm => {
-                        let on_duration = Duration::from_millis((current_state.power * 100.0) as u64);
-                        let off_duration = Duration::from_millis(((1.0 - current_state.power) * 100.0) as u64);
+                        let on_duration = Duration::from_millis((current_state.power * 10.0) as u64);
+                        let off_duration = Duration::from_millis(((1.0 - current_state.power) * 10.0) as u64);
 
                         output_pin.set_high();
                         sleep(on_duration).await;
