@@ -3,6 +3,7 @@ mod hazard_analyzer;
 mod motor;
 mod button;
 mod safewalk;
+mod gps;
 
 use crate::overpass::{OverpassResponse, Point, fetch};
 use anyhow::Result;
@@ -36,7 +37,7 @@ async fn main() -> Result<()> {
     // 
     // println!("Fetched {} elements", data.elements.len());
     
-    let mut safewalk = SafeWalk::new();
+    let mut safewalk = SafeWalk::new().await;
 
     let shutdown = Arc::new(Notify::new());
     let shutdown_clone = shutdown.clone();
