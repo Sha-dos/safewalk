@@ -1,4 +1,5 @@
 use serde::{Deserialize, Serialize};
+use crate::gps::Vector;
 use crate::overpass::Element;
 
 pub struct HazardAnalyzer {
@@ -19,6 +20,7 @@ pub struct HazardReport {
     pub hazard: Element,
     pub distance: f64,
     pub severity: HazardSeverity,
+    pub vector: Vector,
 }
 
 impl HazardAnalyzer {
@@ -43,11 +45,17 @@ impl HazardAnalyzer {
         } else {
             let reports = hazards.into_iter().map(|hazard| {
                 let locations = hazard.location().unwrap();
+                
                 let mut min_distance = f64::MAX;
+                let mut x_diff = 0.0;
+                let mut y_diff = 0.0;
+                
                 for point in locations {
                     let distance = ((point.lat - self.lat).powi(2) + (point.lon - self.lon).powi(2)).sqrt();
                     if distance < min_distance {
                         min_distance = distance;
+                        x_diff = point.lon - self.lon;
+                        y_diff = point.lat - self.lat;
                     }
                 }
 
@@ -58,11 +66,14 @@ impl HazardAnalyzer {
                 } else {
                     HazardSeverity::Low
                 };
+                
+                let vector = Vector::new(f64::atan2(y_diff, x_diff), min_distance);
 
                 HazardReport {
                     hazard: hazard.clone(),
                     distance: min_distance,
                     severity,
+                    vector,
                 }
             }).collect();
 

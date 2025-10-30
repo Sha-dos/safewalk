@@ -1,6 +1,7 @@
 use std::time::Duration;
 use rppal::uart::{Parity, Uart};
 use anyhow::Result;
+use serde::{Deserialize, Serialize};
 use tokio::time::sleep;
 use crate::overpass::Point;
 
@@ -131,6 +132,18 @@ impl GNRMC {
         }
 
         Point { lat, lon }
+    }
+}
+
+#[derive(Debug, Copy, Clone, Serialize, Deserialize)]
+pub struct Vector {
+    rotation: f64, // Radians
+    length: f64, // Google Coordinate Distance
+}
+
+impl Vector {
+    pub fn new(rotation: f64, length: f64) -> Self {
+        Self { rotation, length }
     }
 }
 
