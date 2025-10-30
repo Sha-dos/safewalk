@@ -1,3 +1,4 @@
+use serde::{Deserialize, Serialize};
 use crate::overpass::Element;
 
 pub struct HazardAnalyzer {
@@ -6,12 +7,14 @@ pub struct HazardAnalyzer {
     elements: Vec<Element>,
 }
 
+#[derive(Debug, Deserialize, Serialize)]
 pub enum HazardSeverity {
     Low,
     Medium,
     High,
 }
 
+#[derive(Debug, Deserialize, Serialize)]
 pub struct HazardReport {
     pub hazard: Element,
     pub distance: f64,
@@ -33,7 +36,38 @@ impl HazardAnalyzer {
     }
 
     pub fn analyze(&self) -> Option<Vec<HazardReport>> {
-        None
+        let hazards = self.nearby_hazards(0.001);
+        
+        if hazards.is_empty() {
+            None
+        } else {
+            let reports = hazards.into_iter().map(|hazard| {
+                let locations = hazard.location().unwrap();
+                let mut min_distance = f64::MAX;
+                for point in locations {
+                    let distance = ((point.lat - self.lat).powi(2) + (point.lon - self.lon).powi(2)).sqrt();
+                    if distance < min_distance {
+                        min_distance = distance;
+                    }
+                }
+
+                let severity = if min_distance < 0.0003 {
+                    HazardSeverity::High
+                } else if min_distance < 0.0006 {
+                    HazardSeverity::Medium
+                } else {
+                    HazardSeverity::Low
+                };
+
+                HazardReport {
+                    hazard: hazard.clone(),
+                    distance: min_distance,
+                    severity,
+                }
+            }).collect();
+
+            Some(reports)
+        }
     }
 
     pub fn nearby_hazards(&self, radius: f64) -> Vec<&Element> {

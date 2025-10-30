@@ -1,4 +1,3 @@
-use std::f64::consts::PI;
 use std::time::Duration;
 use rppal::uart::{Parity, Uart};
 use anyhow::Result;

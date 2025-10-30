@@ -19,7 +19,7 @@ pub struct Osm3s {
     pub copyright: String,
 }
 
-#[derive(Debug, Deserialize, Serialize)]
+#[derive(Debug, Deserialize, Serialize, Clone)]
 #[serde(tag = "type")]
 #[serde(rename_all = "lowercase")]
 pub enum Element {
@@ -56,7 +56,7 @@ impl Element {
     }
 }
 
-#[derive(Debug, Deserialize, Serialize)]
+#[derive(Debug, Deserialize, Serialize, Clone)]
 struct Member {
     #[serde(rename = "type")]
     member_type: String,
@@ -66,13 +66,13 @@ struct Member {
 }
 
 #[derive(Debug, Deserialize, Serialize)]
-#[derive(Clone)]
+#[derive(Clone, Copy)]
 pub struct Point {
     pub lat: f64,
     pub lon: f64,
 }
 
-#[derive(Debug, Deserialize, Serialize)]
+#[derive(Debug, Deserialize, Serialize, Copy, Clone)]
 pub struct OverpassBounds {
     #[serde(rename = "maxlat")]
     pub max_lat: f64,
