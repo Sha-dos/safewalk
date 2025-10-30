@@ -39,17 +39,17 @@ impl HazardAnalyzer {
 
     pub fn analyze(&self) -> Option<Vec<HazardReport>> {
         let hazards = self.nearby_hazards(0.001);
-        
+
         if hazards.is_empty() {
             None
         } else {
             let reports = hazards.into_iter().map(|hazard| {
                 let locations = hazard.location().unwrap();
-                
+
                 let mut min_distance = f64::MAX;
                 let mut x_diff = 0.0;
                 let mut y_diff = 0.0;
-                
+
                 for point in locations {
                     let distance = ((point.lat - self.lat).powi(2) + (point.lon - self.lon).powi(2)).sqrt();
                     if distance < min_distance {
@@ -66,7 +66,7 @@ impl HazardAnalyzer {
                 } else {
                     HazardSeverity::Low
                 };
-                
+
                 let vector = Vector::new(f64::atan2(y_diff, x_diff), min_distance);
 
                 HazardReport {

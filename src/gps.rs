@@ -137,8 +137,8 @@ impl GNRMC {
 
 #[derive(Debug, Copy, Clone, Serialize, Deserialize)]
 pub struct Vector {
-    rotation: f64, // Radians
-    length: f64, // Google Coordinate Distance
+    pub rotation: f64, // Radians
+    pub length: f64, // Google Coordinate Distance
 }
 
 impl Vector {

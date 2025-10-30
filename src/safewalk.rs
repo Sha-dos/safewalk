@@ -1,16 +1,74 @@
 use std::fs;
 use std::path::PathBuf;
-use std::time::Duration;
-use tokio::time::sleep;
 use crate::motor::Motor;
 use anyhow::Result;
-use crate::gps::Gps;
+use crate::gps::{Gps, Vector};
 use crate::hazard_analyzer::HazardAnalyzer;
 use crate::overpass::OverpassResponse;
 
 pub struct SafeWalk {
-    motor: Motor,
+    vibration_system: VibrationSystem,
     gps: Gps,
+}
+
+struct VibrationSystemSpeeds {
+    front: f64,
+    back: f64,
+    left: f64,
+    right: f64,
+}
+
+struct VibrationSystem {
+    front: Motor,
+    back: Motor,
+    left: Motor,
+    right: Motor,
+}
+
+impl VibrationSystem {
+    pub fn new(front_pin: u8, back_pin: u8, left_pin: u8, right_pin: u8) -> Result<Self> {
+        Ok(Self {
+            front: Motor::new(front_pin)?,
+            back: Motor::new(back_pin)?,
+            left: Motor::new(left_pin)?,
+            right: Motor::new(right_pin)?,
+        })
+    }
+    
+    fn get_speeds(vector: Vector) -> VibrationSystemSpeeds {
+        let max_detection_distance = 0.00001;
+        
+        let length = (max_detection_distance - vector.length).max(0.0) / max_detection_distance;
+        
+        let x = length * vector.rotation.cos();
+        let y = length * vector.rotation.sin();
+        
+        let front = y.max(0.0);
+        let back = (-y).max(0.0);
+        let left = (-x).max(0.0);
+        let right = x.max(0.0);
+        
+        VibrationSystemSpeeds {
+            front,
+            back,
+            left,
+            right,
+        }
+    }
+    
+    pub async fn set_speeds(&mut self, speeds: VibrationSystemSpeeds) {
+        self.front.set(speeds.front).await;
+        self.back.set(speeds.back).await;
+        self.left.set(speeds.left).await;
+        self.right.set(speeds.right).await;
+    }
+    
+    pub async fn stop(&mut self) {
+        self.front.off().await;
+        self.back.off().await;
+        self.left.off().await;
+        self.right.off().await;
+    }
 }
 
 impl SafeWalk {
@@ -19,13 +77,13 @@ impl SafeWalk {
         gps.init().await;
         
         Self {
-            motor: Motor::new(17).unwrap(),
+            vibration_system: VibrationSystem::new(0, 0, 0, 0).unwrap(),
             gps,
         }
     }
     
     pub async fn stop(&mut self) {
-        self.motor.off().await;
+        self.vibration_system.stop().await;
     }
     
     pub async fn main(&mut self) -> Result<()> {
