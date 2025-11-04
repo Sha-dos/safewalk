@@ -1,7 +1,10 @@
 use std::fs;
 use std::path::PathBuf;
+use std::time::Duration;
 use crate::motor::Motor;
 use anyhow::Result;
+use tokio::time::{sleep, Instant};
+use log::{info, warn};
 use crate::gps::{Gps, Vector};
 use crate::hazard_analyzer::HazardAnalyzer;
 use crate::overpass::OverpassResponse;
@@ -34,20 +37,20 @@ impl VibrationSystem {
             right: Motor::new(right_pin)?,
         })
     }
-    
-    fn get_speeds(vector: Vector) -> VibrationSystemSpeeds {
+
+    pub fn get_speeds(vector: Vector) -> VibrationSystemSpeeds {
         let max_detection_distance = 0.00001;
-        
+
         let length = (max_detection_distance - vector.length).max(0.0) / max_detection_distance;
-        
+
         let x = length * vector.rotation.cos();
         let y = length * vector.rotation.sin();
-        
+
         let front = y.max(0.0);
         let back = (-y).max(0.0);
         let left = (-x).max(0.0);
         let right = x.max(0.0);
-        
+
         VibrationSystemSpeeds {
             front,
             back,
@@ -55,14 +58,14 @@ impl VibrationSystem {
             right,
         }
     }
-    
+
     pub async fn set_speeds(&mut self, speeds: VibrationSystemSpeeds) {
         self.front.set(speeds.front).await;
         self.back.set(speeds.back).await;
         self.left.set(speeds.left).await;
         self.right.set(speeds.right).await;
     }
-    
+
     pub async fn stop(&mut self) {
         self.front.off().await;
         self.back.off().await;
@@ -75,52 +78,68 @@ impl SafeWalk {
     pub async fn new() -> Self {
         let mut gps = Gps::new();
         gps.init().await;
-        
+
         Self {
             vibration_system: VibrationSystem::new(0, 0, 0, 0).unwrap(),
             gps,
         }
     }
-    
+
     pub async fn stop(&mut self) {
         self.vibration_system.stop().await;
     }
-    
+
     pub async fn main(&mut self) -> Result<()> {
+        let data = fs::read_to_string(PathBuf::from("out.json"))?;
+
+        let response = serde_json::from_str::<OverpassResponse>(&data)?;
+
+        let mut analyzer = HazardAnalyzer::new(33.423322, -111.932648, response.elements);
+
+        let mut gps = Gps::new();
+        gps.init().await;
+
+        let mut last_loop = Instant::now();
+
         loop {
             // self.motor.set(0.25).await;
             // sleep(Duration::from_millis(1000)).await;
-            // 
+            //
             // self.motor.set(0.5).await;
             // sleep(Duration::from_millis(1000)).await;
-            // 
+            //
             // self.motor.set(0.75).await;
             // sleep(Duration::from_millis(1000)).await;
-            // 
+            //
             // self.motor.set(1.).await;
             // sleep(Duration::from_millis(1000)).await;
-            
+
             // let response = self.gps.get().await;
             // println!("{:?}", response);
 
-            let data = fs::read_to_string(PathBuf::from("out.json")).unwrap();
+            analyzer.update_location(gps.get().await.google_coordinates());
 
-            let response = serde_json::from_str::<OverpassResponse>(&data).unwrap();
+            let mut reports = analyzer.analyze();
 
-            let analyzer = HazardAnalyzer::new(33.423322, -111.932648, response.elements);
+            if let Some(mut reports) = reports {
+                reports.sort_by(|a, b| a.distance.partial_cmp(&b.distance).unwrap());
 
-            let reports = analyzer.analyze();
-
-            if let Some(reports) = reports {
-                for report in &reports {
-                    println!("{}", serde_json::to_string_pretty(report)?);
-                }
-                assert!(!reports.is_empty());
+                let speeds = VibrationSystem::get_speeds(reports.first().unwrap().vector);
+                self.vibration_system.set_speeds(speeds).await;
             } else {
-                panic!("No hazards found");
+                info!("No hazards found");
+            }
+
+            let dt = last_loop.elapsed();
+            let elapsed = dt.as_secs_f64();
+            let left = 1. / 10. - elapsed;
+            
+            if left < 0. {
+                warn!("Loop overrun: {} ms", -left * 1000.);
             }
             
-            return Ok(());
+            sleep(Duration::from_secs_f64(left.max(0.))).await;
+            last_loop = Instant::now();
         }
     }
 }

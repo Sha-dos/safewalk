@@ -10,3 +10,4 @@ serde_json = "1.0"
 anyhow = "1.0.100"
 serde = { version = "1.0.228", features = ["derive"] }
 rppal = "0.22.1"
+log = "0.4.28"

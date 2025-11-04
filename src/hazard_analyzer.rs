@@ -1,6 +1,6 @@
 use serde::{Deserialize, Serialize};
 use crate::gps::Vector;
-use crate::overpass::Element;
+use crate::overpass::{Element, Point};
 
 pub struct HazardAnalyzer {
     lat: f64,
@@ -28,9 +28,9 @@ impl HazardAnalyzer {
         Self { lat, lon, elements }
     }
 
-    pub fn update_location(&mut self, lat: f64, lon: f64) {
-        self.lat = lat;
-        self.lon = lon;
+    pub fn update_location(&mut self, point: Point) {
+        self.lat = point.lat;
+        self.lon = point.lon;
     }
 
     pub fn update_elements(&mut self, elements: Vec<Element>) {
