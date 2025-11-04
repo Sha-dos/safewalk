@@ -98,6 +98,8 @@ impl SafeWalk {
 
         let mut gps = Gps::new();
         gps.init().await;
+        
+        let mut prev_location = gps.get().await.google_coordinates();
 
         let mut last_loop = Instant::now();
 
@@ -117,14 +119,16 @@ impl SafeWalk {
             // let response = self.gps.get().await;
             // println!("{:?}", response);
 
-            analyzer.update_location(gps.get().await.google_coordinates());
+            let location = gps.get_with_direction(Some(prev_location)).await;
+            analyzer.update_location(location.0.google_coordinates());
 
             let mut reports = analyzer.analyze();
 
             if let Some(mut reports) = reports {
                 reports.sort_by(|a, b| a.distance.partial_cmp(&b.distance).unwrap());
-
-                let speeds = VibrationSystem::get_speeds(reports.first().unwrap().vector);
+                
+                let relative_vector = reports.first().unwrap().vector.rotate(-location.1);
+                let speeds = VibrationSystem::get_speeds(relative_vector);
                 self.vibration_system.set_speeds(speeds).await;
             } else {
                 info!("No hazards found");

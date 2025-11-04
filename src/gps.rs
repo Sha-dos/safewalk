@@ -142,6 +142,15 @@ pub struct Vector {
 }
 
 impl Vector {
+    pub fn rotate(&self, other: &Vector) -> Vector {
+        Vector {
+            rotation: self.rotation + other.rotation,
+            length: self.length,
+        }
+    }
+}
+
+impl Vector {
     pub fn new(rotation: f64, length: f64) -> Self {
         Self { rotation, length }
     }
@@ -302,5 +311,32 @@ impl Gps {
         }
 
         gps
+    }
+
+    pub fn calculate_bearing(&self, from: &Point, to: &Point) -> f64 {
+        let lat1 = from.lat.to_radians();
+        let lat2 = to.lat.to_radians();
+        let delta_lon = (to.lon - from.lon).to_radians();
+
+        let y = delta_lon.sin() * lat2.cos();
+        let x = lat1.cos() * lat2.sin() - lat1.sin() * lat2.cos() * delta_lon.cos();
+
+        let bearing = y.atan2(x);
+        (bearing.to_degrees() + 360.0) % 360.0
+    }
+    
+    pub async fn get_with_direction(&mut self, previous_position: Option<Point>) -> (GNRMC, Option<f64>) {
+        let current_reading = self.get().await;
+
+        if current_reading.status == 1 {
+            let current_position = current_reading.google_coordinates();
+
+            if let Some(prev_pos) = previous_position {
+                let direction = self.calculate_bearing(&prev_pos, &current_position);
+                return (current_reading, Some(direction));
+            }
+        }
+
+        (current_reading, None)
     }
 }
