@@ -1,7 +1,7 @@
-use crate::gps::{Gps, Vector};
+use crate::gps::{Gps, GpsSimulator, Vector};
 use crate::hazard_analyzer::HazardAnalyzer;
 use crate::motor::Motor;
-use crate::overpass::OverpassResponse;
+use crate::overpass::{OverpassResponse, Point};
 use anyhow::Result;
 use log::{info, warn};
 use std::fs;
@@ -29,13 +29,13 @@ struct VibrationSystem {
 }
 
 impl VibrationSystem {
-    pub fn new(front_pin: u8, back_pin: u8, left_pin: u8, right_pin: u8) -> Result<Self> {
-        Ok(Self {
-            front: Motor::new(front_pin)?,
-            back: Motor::new(back_pin)?,
-            left: Motor::new(left_pin)?,
-            right: Motor::new(right_pin)?,
-        })
+    pub fn new(front_pin: u8, back_pin: u8, left_pin: u8, right_pin: u8) -> Self {
+        Self {
+            front: Motor::new(front_pin).unwrap(),
+            back: Motor::new(back_pin).unwrap(),
+            left: Motor::new(left_pin).unwrap(),
+            right: Motor::new(right_pin).unwrap(),
+        }
     }
 
     pub fn get_speeds(vector: Vector) -> VibrationSystemSpeeds {
@@ -80,7 +80,7 @@ impl SafeWalk {
         gps.init().await;
 
         Self {
-            vibration_system: VibrationSystem::new(0, 0, 0, 0).unwrap(),
+            vibration_system: VibrationSystem::new(24, 25, 27, 28),
             gps,
         }
     }
@@ -94,13 +94,26 @@ impl SafeWalk {
 
         let response = serde_json::from_str::<OverpassResponse>(&data)?;
 
-        let mut analyzer = HazardAnalyzer::new(33.423322, -111.932648, response.elements);
+        let mut analyzer = HazardAnalyzer::new(33.423528, -111.932806, response.elements);
 
-        let mut gps = Gps::new();
-        gps.init().await;
+        // let mut gps = Gps::new();
+        // gps.init().await;
+        //
+        // let mut prev_location = gps.get().await.google_coordinates();
+        // sleep(Duration::from_millis(25)).await;
 
-        let mut prev_location = gps.get().await.google_coordinates();
-        sleep(Duration::from_millis(25)).await;
+        let mut gps = GpsSimulator::new(
+            Point {
+                lat: 33.423528,
+                lon: -111.932806,
+            },
+            Point {
+                lat: 33.423528,
+                lon: -111.932611,
+            },
+        );
+
+        let mut prev_location = gps.get();
 
         let mut last_loop = Instant::now();
 
@@ -120,22 +133,29 @@ impl SafeWalk {
             // let response = self.gps.get().await;
             // println!("{:?}", response);
 
-            let location = gps.get_with_direction(Some(prev_location)).await;
-            analyzer.update_location(location.0.google_coordinates());
+            let location = gps.get_with_direction(prev_location);
+            analyzer.update_location(location.0);
+
+            println!("Current Location: {}, {}", location.0.lat, location.0.lon);
 
             let mut reports = analyzer.analyze();
 
             if let Some(mut reports) = reports {
                 reports.sort_by(|a, b| a.distance.partial_cmp(&b.distance).unwrap());
 
-                let relative_vector = reports.first().unwrap().vector.rotate(-location.1);
-                let speeds = VibrationSystem::get_speeds(relative_vector);
-                self.vibration_system.set_speeds(speeds).await;
+                let relative_vector = reports.first().unwrap().vector.rotate(-location.1.unwrap());
+                // let speeds = VibrationSystem::get_speeds(relative_vector);
+                // self.vibration_system.set_speeds(speeds).await;
+
+                println!("Hazard Detected: {:?}", reports.first().unwrap().hazard.location().unwrap().first().unwrap());
+                println!("Relative Vector: {:?}", relative_vector);
             } else {
                 info!("No hazards found");
             }
 
-            prev_location = location.0.google_coordinates();
+            prev_location = Some(location.0);
+
+            println!();
 
             let dt = last_loop.elapsed();
             let elapsed = dt.as_secs_f64();

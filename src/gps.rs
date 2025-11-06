@@ -87,7 +87,7 @@ impl Command {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Copy, Clone)]
 pub struct GNRMC {
     pub lon: f64,
     pub lat: f64,
@@ -142,9 +142,9 @@ pub struct Vector {
 }
 
 impl Vector {
-    pub fn rotate(&self, other: &Vector) -> Vector {
+    pub fn rotate(&self, rotation: f64) -> Vector {
         Vector {
-            rotation: self.rotation + other.rotation,
+            rotation: self.rotation + rotation,
             length: self.length,
         }
     }
@@ -315,16 +315,12 @@ impl Gps {
         gps
     }
 
-    pub fn calculate_bearing(&self, from: &Point, to: &Point) -> f64 {
-        let lat1 = from.lat.to_radians();
-        let lat2 = to.lat.to_radians();
-        let delta_lon = (to.lon - from.lon).to_radians();
+    // Calculate bearing in radians to determine direction based off movement from 2 points
+    pub fn calculate_bearing(from: &Point, to: &Point) -> f64 {
+        let x = to.lon - from.lon;
+        let y = to.lat - from.lat;
 
-        let y = delta_lon.sin() * lat2.cos();
-        let x = lat1.cos() * lat2.sin() - lat1.sin() * lat2.cos() * delta_lon.cos();
-
-        let bearing = y.atan2(x);
-        (bearing.to_degrees() + 360.0) % 360.0
+        y.atan2(x)
     }
 
     pub async fn get_with_direction(
@@ -337,11 +333,72 @@ impl Gps {
             let current_position = current_reading.google_coordinates();
 
             if let Some(prev_pos) = previous_position {
-                let direction = self.calculate_bearing(&prev_pos, &current_position);
+                let direction = Self::calculate_bearing(&prev_pos, &current_position);
                 return (current_reading, Some(direction));
             }
         }
 
         (current_reading, None)
+    }
+}
+
+pub struct GpsSimulator {
+    starting_point: Point,
+    ending_point: Point,
+    current_point: Point
+}
+
+impl GpsSimulator {
+    pub fn new(starting_point: Point, ending_point: Point) -> Self {
+        Self {
+            starting_point,
+            ending_point,
+            current_point: starting_point
+        }
+    }
+
+    pub fn get(&mut self) -> Option<Point> {
+        let step_size = 0.00002;
+
+        let mut next_lat = self.current_point.lat;
+        let mut next_lon = self.current_point.lon;
+
+        // println!("{} {}", (next_lat - self.ending_point.lat).abs(), (next_lon - self.ending_point.lon).abs());
+
+        if (next_lat - self.ending_point.lat).abs() > step_size
+            || (next_lon - self.ending_point.lon).abs() > step_size
+        {
+            if next_lat < self.ending_point.lat {
+                next_lat += step_size;
+            } else if next_lat > self.ending_point.lat {
+                next_lat -= step_size;
+            }
+
+            if next_lon < self.ending_point.lon {
+                next_lon += step_size;
+            } else if next_lon > self.ending_point.lon {
+                next_lon -= step_size;
+            }
+
+            self.current_point = Point {
+                lat: next_lat,
+                lon: next_lon,
+            };
+
+            Some(self.current_point)
+        } else {
+            None
+        }
+    }
+
+    pub fn get_with_direction(&mut self, previous_position: Option<Point>) -> (Point, Option<f64>) {
+        let current_position = self.get().unwrap();
+
+        if let Some(prev_pos) = previous_position {
+            let direction = Gps::calculate_bearing(&prev_pos, &current_position);
+            return (current_position, Some(direction));
+        }
+
+        (current_position, None)
     }
 }
