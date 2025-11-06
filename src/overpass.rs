@@ -49,7 +49,10 @@ pub enum Element {
 impl Element {
     pub fn location(&self) -> Option<Vec<Point>> {
         match self {
-            Element::Node { lat, lon, .. } => Some(vec![Point { lat: *lat, lon: *lon }]),
+            Element::Node { lat, lon, .. } => Some(vec![Point {
+                lat: *lat,
+                lon: *lon,
+            }]),
             Element::Way { geometry, .. } => Some(geometry.clone()),
             Element::Relation { .. } => None,
         }
@@ -65,8 +68,7 @@ struct Member {
     role: String,
 }
 
-#[derive(Debug, Deserialize, Serialize)]
-#[derive(Clone, Copy)]
+#[derive(Debug, Deserialize, Serialize, Clone, Copy)]
 pub struct Point {
     pub lat: f64,
     pub lon: f64,

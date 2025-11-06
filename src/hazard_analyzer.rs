@@ -1,6 +1,6 @@
-use serde::{Deserialize, Serialize};
 use crate::gps::Vector;
 use crate::overpass::{Element, Point};
+use serde::{Deserialize, Serialize};
 
 pub struct HazardAnalyzer {
     lat: f64,
@@ -43,65 +43,75 @@ impl HazardAnalyzer {
         if hazards.is_empty() {
             None
         } else {
-            let reports = hazards.into_iter().map(|hazard| {
-                let locations = hazard.location().unwrap();
+            let reports = hazards
+                .into_iter()
+                .map(|hazard| {
+                    let locations = hazard.location().unwrap();
 
-                let mut min_distance = f64::MAX;
-                let mut x_diff = 0.0;
-                let mut y_diff = 0.0;
+                    let mut min_distance = f64::MAX;
+                    let mut x_diff = 0.0;
+                    let mut y_diff = 0.0;
 
-                for point in locations {
-                    let distance = ((point.lat - self.lat).powi(2) + (point.lon - self.lon).powi(2)).sqrt();
-                    if distance < min_distance {
-                        min_distance = distance;
-                        x_diff = point.lon - self.lon;
-                        y_diff = point.lat - self.lat;
+                    for point in locations {
+                        let distance = ((point.lat - self.lat).powi(2)
+                            + (point.lon - self.lon).powi(2))
+                        .sqrt();
+                        if distance < min_distance {
+                            min_distance = distance;
+                            x_diff = point.lon - self.lon;
+                            y_diff = point.lat - self.lat;
+                        }
                     }
-                }
 
-                let severity = if min_distance < 0.0003 {
-                    HazardSeverity::High
-                } else if min_distance < 0.0006 {
-                    HazardSeverity::Medium
-                } else {
-                    HazardSeverity::Low
-                };
+                    let severity = if min_distance < 0.0003 {
+                        HazardSeverity::High
+                    } else if min_distance < 0.0006 {
+                        HazardSeverity::Medium
+                    } else {
+                        HazardSeverity::Low
+                    };
 
-                let vector = Vector::new(f64::atan2(y_diff, x_diff), min_distance);
+                    let vector = Vector::new(f64::atan2(y_diff, x_diff), min_distance);
 
-                HazardReport {
-                    hazard: hazard.clone(),
-                    distance: min_distance,
-                    severity,
-                    vector,
-                }
-            }).collect();
+                    HazardReport {
+                        hazard: hazard.clone(),
+                        distance: min_distance,
+                        severity,
+                        vector,
+                    }
+                })
+                .collect();
 
             Some(reports)
         }
     }
 
     pub fn nearby_hazards(&self, radius: f64) -> Vec<&Element> {
-        self.elements.iter().filter(|element| {
-            if let Some(locations) = element.location() {
-                for point in locations {
-                    let distance = ((point.lat - self.lat).powi(2) + (point.lon - self.lon).powi(2)).sqrt();
-                    if distance <= radius {
-                        return true;
+        self.elements
+            .iter()
+            .filter(|element| {
+                if let Some(locations) = element.location() {
+                    for point in locations {
+                        let distance = ((point.lat - self.lat).powi(2)
+                            + (point.lon - self.lon).powi(2))
+                        .sqrt();
+                        if distance <= radius {
+                            return true;
+                        }
                     }
                 }
-            }
-            false
-        }).collect()
+                false
+            })
+            .collect()
     }
 }
 
 #[cfg(test)]
 mod tests {
-    use std::fs;
-    use std::path::PathBuf;
     use crate::hazard_analyzer::HazardAnalyzer;
     use crate::overpass::OverpassResponse;
+    use std::fs;
+    use std::path::PathBuf;
 
     #[test]
     fn test_nearby_hazards() {

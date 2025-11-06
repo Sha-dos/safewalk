@@ -1,9 +1,9 @@
-use std::time::Duration;
-use rppal::uart::{Parity, Uart};
-use anyhow::Result;
-use serde::{Deserialize, Serialize};
-use tokio::time::sleep;
 use crate::overpass::Point;
+use anyhow::Result;
+use rppal::uart::{Parity, Uart};
+use serde::{Deserialize, Serialize};
+use std::time::Duration;
+use tokio::time::sleep;
 
 pub struct Gps {
     uart: Uart,
@@ -138,7 +138,7 @@ impl GNRMC {
 #[derive(Debug, Copy, Clone, Serialize, Deserialize)]
 pub struct Vector {
     pub rotation: f64, // Radians
-    pub length: f64, // Google Coordinate Distance
+    pub length: f64,   // Google Coordinate Distance
 }
 
 impl Vector {
@@ -160,13 +160,13 @@ impl Gps {
     pub fn new() -> Self {
         let mut uart = Uart::with_path("/dev/ttyS0", 9600, Parity::None, 8, 1).unwrap();
 
-        Self {
-            uart
-        }
+        Self { uart }
     }
 
     pub async fn init(&mut self) {
-        self.send_command(Command::SetNmeaBaudrate115200).await.unwrap();
+        self.send_command(Command::SetNmeaBaudrate115200)
+            .await
+            .unwrap();
         sleep(Duration::from_millis(100)).await;
 
         self.set_baud_rate(115200).unwrap();
@@ -261,7 +261,8 @@ impl Gps {
                                         i += 1;
                                         continue;
                                     }
-                                    latitude = (buff_t[add + z + i + 1] - b'0') as u32 + latitude * 10;
+                                    latitude =
+                                        (buff_t[add + z + i + 1] - b'0') as u32 + latitude * 10;
                                     i += 1;
                                 }
                                 gps.lat = latitude as f64 / 1_000_000.0;
@@ -280,7 +281,8 @@ impl Gps {
                                         i += 1;
                                         continue;
                                     }
-                                    longitude = (buff_t[add + z + i + 1] - b'0') as u32 + longitude * 10;
+                                    longitude =
+                                        (buff_t[add + z + i + 1] - b'0') as u32 + longitude * 10;
                                     i += 1;
                                 }
                                 gps.lon = longitude as f64 / 1_000_000.0;
@@ -324,8 +326,11 @@ impl Gps {
         let bearing = y.atan2(x);
         (bearing.to_degrees() + 360.0) % 360.0
     }
-    
-    pub async fn get_with_direction(&mut self, previous_position: Option<Point>) -> (GNRMC, Option<f64>) {
+
+    pub async fn get_with_direction(
+        &mut self,
+        previous_position: Option<Point>,
+    ) -> (GNRMC, Option<f64>) {
         let current_reading = self.get().await;
 
         if current_reading.status == 1 {

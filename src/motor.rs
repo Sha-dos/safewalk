@@ -1,10 +1,10 @@
-use std::error::Error;
-use std::time::Duration;
 use rppal::gpio::{Gpio, OutputPin};
-use tokio::time::sleep;
-use tokio::task::JoinHandle;
+use std::error::Error;
 use std::sync::Arc;
+use std::time::Duration;
 use tokio::sync::Mutex;
+use tokio::task::JoinHandle;
+use tokio::time::sleep;
 
 #[derive(Clone)]
 pub struct Motor {
@@ -38,9 +38,7 @@ impl Motor {
 
         let handle = tokio::spawn(async move {
             loop {
-                let current_state = {
-                    state_clone.lock().await
-                };
+                let current_state = { state_clone.lock().await };
 
                 match current_state.mode {
                     MotorMode::Off => {
@@ -52,8 +50,10 @@ impl Motor {
                         sleep(Duration::from_millis(10)).await;
                     }
                     MotorMode::Pwm => {
-                        let on_duration = Duration::from_millis((current_state.power * 10.0) as u64);
-                        let off_duration = Duration::from_millis(((1.0 - current_state.power) * 10.0) as u64);
+                        let on_duration =
+                            Duration::from_millis((current_state.power * 10.0) as u64);
+                        let off_duration =
+                            Duration::from_millis(((1.0 - current_state.power) * 10.0) as u64);
 
                         output_pin.set_high();
                         sleep(on_duration).await;

@@ -1,13 +1,13 @@
+use crate::gps::{Gps, Vector};
+use crate::hazard_analyzer::HazardAnalyzer;
+use crate::motor::Motor;
+use crate::overpass::OverpassResponse;
+use anyhow::Result;
+use log::{info, warn};
 use std::fs;
 use std::path::PathBuf;
 use std::time::Duration;
-use crate::motor::Motor;
-use anyhow::Result;
-use tokio::time::{sleep, Instant};
-use log::{info, warn};
-use crate::gps::{Gps, Vector};
-use crate::hazard_analyzer::HazardAnalyzer;
-use crate::overpass::OverpassResponse;
+use tokio::time::{Instant, sleep};
 
 pub struct SafeWalk {
     vibration_system: VibrationSystem,
@@ -98,8 +98,9 @@ impl SafeWalk {
 
         let mut gps = Gps::new();
         gps.init().await;
-        
+
         let mut prev_location = gps.get().await.google_coordinates();
+        sleep(Duration::from_millis(25)).await;
 
         let mut last_loop = Instant::now();
 
@@ -126,7 +127,7 @@ impl SafeWalk {
 
             if let Some(mut reports) = reports {
                 reports.sort_by(|a, b| a.distance.partial_cmp(&b.distance).unwrap());
-                
+
                 let relative_vector = reports.first().unwrap().vector.rotate(-location.1);
                 let speeds = VibrationSystem::get_speeds(relative_vector);
                 self.vibration_system.set_speeds(speeds).await;
@@ -134,14 +135,16 @@ impl SafeWalk {
                 info!("No hazards found");
             }
 
+            prev_location = location.0.google_coordinates();
+
             let dt = last_loop.elapsed();
             let elapsed = dt.as_secs_f64();
             let left = 1. / 10. - elapsed;
-            
+
             if left < 0. {
                 warn!("Loop overrun: {} ms", -left * 1000.);
             }
-            
+
             sleep(Duration::from_secs_f64(left.max(0.))).await;
             last_loop = Instant::now();
         }

@@ -1,42 +1,42 @@
-mod overpass;
+mod button;
+mod gps;
 mod hazard_analyzer;
 mod motor;
-mod button;
+mod overpass;
 mod safewalk;
-mod gps;
 
+use crate::button::Button;
+use crate::motor::Motor;
 use crate::overpass::{OverpassResponse, Point, fetch};
+use crate::safewalk::SafeWalk;
 use anyhow::Result;
 use std::env;
 use std::path::PathBuf;
 use std::sync::Arc;
-use tokio::time::sleep;
 use std::time::Duration;
 use tokio::fs::read_to_string;
 use tokio::signal;
 use tokio::sync::Notify;
-use crate::button::Button;
-use crate::motor::Motor;
-use crate::safewalk::SafeWalk;
+use tokio::time::sleep;
 
 #[tokio::main]
 async fn main() -> Result<()> {
     // let args = env::args().collect::<Vec<String>>();
     // let data = if args.contains(&"--cache".to_string()) {
     //     println!("Using cached data");
-    // 
+    //
     //     let s = read_to_string(PathBuf::from("out.json")).await?;
     //     serde_json::from_str::<OverpassResponse>(&*s)?
     // } else {
     //     println!("Fetching data");
-    //     
+    //
     //     let bbox = bbox(33.423322, -111.932648, 0.015);
-    //     
+    //
     //     fetch(bbox).await?
     // };
-    // 
+    //
     // println!("Fetched {} elements", data.elements.len());
-    
+
     let mut safewalk = SafeWalk::new().await;
 
     let shutdown = Arc::new(Notify::new());
