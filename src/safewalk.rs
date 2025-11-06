@@ -1,3 +1,4 @@
+use std::f64::consts::PI;
 use crate::gps::{Gps, GpsSimulator, Vector};
 use crate::hazard_analyzer::HazardAnalyzer;
 use crate::motor::Motor;
@@ -6,12 +7,14 @@ use anyhow::Result;
 use log::{info, warn};
 use std::fs;
 use std::path::PathBuf;
+use std::process::exit;
 use std::time::Duration;
 use tokio::time::{Instant, sleep};
 
 pub struct SafeWalk {
     vibration_system: VibrationSystem,
     gps: Gps,
+    motor: Motor,
 }
 
 struct VibrationSystemSpeeds {
@@ -39,17 +42,30 @@ impl VibrationSystem {
     }
 
     pub fn get_speeds(vector: Vector) -> VibrationSystemSpeeds {
-        let max_detection_distance = 0.00001;
+        let max_detection_distance = 0.0001;
 
         let length = (max_detection_distance - vector.length).max(0.0) / max_detection_distance;
 
-        let x = length * vector.rotation.cos();
-        let y = length * vector.rotation.sin();
+        // Coordinate system:
+        // - Relative angle 0° = straight ahead
+        // - Negative angles = RIGHT (clockwise rotation)
+        // - Positive angles = LEFT (counter-clockwise rotation)
+        //
+        // cos(angle) gives forward/back component:
+        //   cos(0°) = 1 (straight ahead)
+        //   cos(±180°) = -1 (behind)
+        //
+        // sin(angle) gives left/right component:
+        //   sin(negative angle) = negative value = RIGHT
+        //   sin(positive angle) = positive value = LEFT
 
-        let front = y.max(0.0);
-        let back = (-y).max(0.0);
-        let left = (-x).max(0.0);
-        let right = x.max(0.0);
+        let forward_component = vector.rotation.cos() * length;
+        let side_component = vector.rotation.sin() * length;
+
+        let front = forward_component.max(0.0);
+        let back = (-forward_component).max(0.0);
+        let left = side_component.max(0.0);      // positive sin = left
+        let right = (-side_component).max(0.0);  // negative sin = right
 
         VibrationSystemSpeeds {
             front,
@@ -82,6 +98,7 @@ impl SafeWalk {
         Self {
             vibration_system: VibrationSystem::new(24, 25, 27, 28),
             gps,
+            motor: Motor::new(29).unwrap(),
         }
     }
 
@@ -105,12 +122,12 @@ impl SafeWalk {
         let mut gps = GpsSimulator::new(
             Point {
                 lat: 33.423528,
-                lon: -111.932806,
+                lon: -111.932611,
             },
             Point {
                 lat: 33.423528,
-                lon: -111.932611,
-            },
+                lon: -111.932806,
+            }
         );
 
         let mut prev_location = gps.get();
@@ -134,26 +151,58 @@ impl SafeWalk {
             // println!("{:?}", response);
 
             let location = gps.get_with_direction(prev_location);
-            analyzer.update_location(location.0);
 
-            println!("Current Location: {}, {}", location.0.lat, location.0.lon);
+            // Check if simulation ended
+            if location.1.is_none() {
+                println!("Simulation complete - reached destination");
+                exit(0);
+            }
 
-            let mut reports = analyzer.analyze();
+            let current_pos = location.0.unwrap();
+            analyzer.update_location(current_pos);
+
+            println!("Current Location: {}, {}", current_pos.lat, current_pos.lon);
+
+            let reports = analyzer.analyze();
 
             if let Some(mut reports) = reports {
                 reports.sort_by(|a, b| a.distance.partial_cmp(&b.distance).unwrap());
 
-                let relative_vector = reports.first().unwrap().vector.rotate(-location.1.unwrap());
-                // let speeds = VibrationSystem::get_speeds(relative_vector);
-                // self.vibration_system.set_speeds(speeds).await;
+                let hazard_vector = reports.first().unwrap().vector;
+                let user_heading = location.1.unwrap();
+
+                let mut relative_angle = hazard_vector.rotation - user_heading;
+
+                // Normalize to [-π, π]
+                while relative_angle > PI {
+                    relative_angle -= 2.0 * PI;
+                }
+                while relative_angle < -PI {
+                    relative_angle += 2.0 * PI;
+                }
+
+                // In the relative coordinate system:
+                // 0° = straight ahead
+                // NEGATIVE angles (0° to -180°) = to the RIGHT (clockwise)
+                // POSITIVE angles (0° to 180°) = to the LEFT (counter-clockwise)
+                // ±180° = directly behind
+
+                let relative_vector = Vector::new(relative_angle, hazard_vector.length);
 
                 println!("Hazard Detected: {:?}", reports.first().unwrap().hazard.location().unwrap().first().unwrap());
+                println!("User heading (radians): {:.4} ({:.1}°)", user_heading, user_heading.to_degrees());
+                println!("Hazard absolute angle (radians): {:.4} ({:.1}°)", hazard_vector.rotation, hazard_vector.rotation.to_degrees());
+                println!("Relative angle: {:.4} rad ({:.1}°) - Negative=RIGHT, Positive=LEFT", relative_angle, relative_angle.to_degrees());
                 println!("Relative Vector: {:?}", relative_vector);
+
+                let speeds = VibrationSystem::get_speeds(relative_vector);
+                println!("Vibration - Front: {:.2}, Back: {:.2}, Left: {:.2}, Right: {:.2}",
+                    speeds.front, speeds.back, speeds.left, speeds.right);
             } else {
                 info!("No hazards found");
             }
 
-            prev_location = Some(location.0);
+            prev_location = Some(current_pos);
 
             println!();
 

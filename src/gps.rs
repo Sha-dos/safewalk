@@ -319,8 +319,12 @@ impl Gps {
     pub fn calculate_bearing(from: &Point, to: &Point) -> f64 {
         let x = to.lon - from.lon;
         let y = to.lat - from.lat;
+        let bearing = y.atan2(x);
 
-        y.atan2(x)
+        // println!("Bearing calc: from({:.6}, {:.6}) to ({:.6}, {:.6})", from.lat, from.lon, to.lat, to.lon);
+        // println!("  dx={:.8}, dy={:.8}, bearing={:.4} rad ({:.1}°)", x, y, bearing, bearing.to_degrees());
+
+        bearing
     }
 
     pub async fn get_with_direction(
@@ -391,14 +395,20 @@ impl GpsSimulator {
         }
     }
 
-    pub fn get_with_direction(&mut self, previous_position: Option<Point>) -> (Point, Option<f64>) {
-        let current_position = self.get().unwrap();
+    pub fn get_with_direction(&mut self, previous_position: Option<Point>) -> (Option<Point>, Option<f64>) {
+        let current_position = self.get();
 
-        if let Some(prev_pos) = previous_position {
-            let direction = Gps::calculate_bearing(&prev_pos, &current_position);
-            return (current_position, Some(direction));
+        if current_position.is_none() {
+            return (None, None);
         }
 
-        (current_position, None)
+        let current_pos = current_position.unwrap();
+
+        if let Some(prev_pos) = previous_position {
+            let direction = Gps::calculate_bearing(&prev_pos, &current_pos);
+            return (Some(current_pos), Some(direction));
+        }
+
+        (Some(current_pos), None)
     }
 }
