@@ -362,7 +362,7 @@ impl GpsSimulator {
     }
 
     pub fn get(&mut self) -> Option<Point> {
-        let step_size = 0.00002;
+        let step_size = 0.00001;
 
         let mut next_lat = self.current_point.lat;
         let mut next_lon = self.current_point.lon;

@@ -14,7 +14,6 @@ use tokio::time::{Instant, sleep};
 pub struct SafeWalk {
     vibration_system: VibrationSystem,
     gps: Gps,
-    motor: Motor,
 }
 
 struct VibrationSystemSpeeds {
@@ -39,6 +38,28 @@ impl VibrationSystem {
             left: Motor::new(left_pin).unwrap(),
             right: Motor::new(right_pin).unwrap(),
         }
+    }
+
+    pub async fn test(&self) {
+        println!("Front motor ON");
+        self.front.set(1.0).await;
+        sleep(Duration::from_millis(2000)).await;
+        self.front.off().await;
+
+        println!("Back motor ON");
+        self.back.set(1.0).await;
+        sleep(Duration::from_millis(2000)).await;
+        self.back.off().await;
+
+        println!("Left motor ON");
+        self.left.set(1.0).await;
+        sleep(Duration::from_millis(2000)).await;
+        self.left.off().await;
+
+        println!("Right motor ON");
+        self.right.set(1.0).await;
+        sleep(Duration::from_millis(2000)).await;
+        self.right.off().await;
     }
 
     pub fn get_speeds(vector: Vector) -> VibrationSystemSpeeds {
@@ -96,9 +117,8 @@ impl SafeWalk {
         gps.init().await;
 
         Self {
-            vibration_system: VibrationSystem::new(24, 25, 27, 28),
+            vibration_system: VibrationSystem::new(26, 27, 7, 5),
             gps,
-            motor: Motor::new(29).unwrap(),
         }
     }
 
@@ -135,19 +155,10 @@ impl SafeWalk {
         let mut last_loop = Instant::now();
 
         loop {
-            // self.motor.set(0.25).await;
-            // sleep(Duration::from_millis(1000)).await;
-            //
-            // self.motor.set(0.5).await;
-            // sleep(Duration::from_millis(1000)).await;
-            //
-            // self.motor.set(0.75).await;
-            // sleep(Duration::from_millis(1000)).await;
-            //
-            // self.motor.set(1.).await;
-            // sleep(Duration::from_millis(1000)).await;
+            self.vibration_system.test().await;
+        }
 
-            // let response = self.gps.get().await;
+        // let response = self.gps.get().await;
             // println!("{:?}", response);
 
             let location = gps.get_with_direction(prev_location);
@@ -155,7 +166,7 @@ impl SafeWalk {
             // Check if simulation ended
             if location.1.is_none() {
                 println!("Simulation complete - reached destination");
-                exit(0);
+                return Ok(());
             }
 
             let current_pos = location.0.unwrap();
@@ -208,7 +219,7 @@ impl SafeWalk {
 
             let dt = last_loop.elapsed();
             let elapsed = dt.as_secs_f64();
-            let left = 1. / 10. - elapsed;
+            let left = 1. / 2. - elapsed;
 
             if left < 0. {
                 warn!("Loop overrun: {} ms", -left * 1000.);
@@ -216,6 +227,6 @@ impl SafeWalk {
 
             sleep(Duration::from_secs_f64(left.max(0.))).await;
             last_loop = Instant::now();
-        }
+        // }
     }
 }

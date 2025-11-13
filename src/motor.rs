@@ -42,11 +42,11 @@ impl Motor {
 
                 match current_state.mode {
                     MotorMode::Off => {
-                        output_pin.set_high();
+                        output_pin.set_low();
                         sleep(Duration::from_millis(10)).await;
                     }
                     MotorMode::On => {
-                        output_pin.set_low();
+                        output_pin.set_high();
                         sleep(Duration::from_millis(10)).await;
                     }
                     MotorMode::Pwm => {
@@ -57,7 +57,7 @@ impl Motor {
 
                         output_pin.set_high();
                         sleep(on_duration).await;
-                        output_pin.set_low();
+                        output_pin.set_high();
                         sleep(off_duration).await;
                     }
                 }

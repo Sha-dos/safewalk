@@ -55,8 +55,14 @@ async fn main() -> Result<()> {
         }
         result = safewalk.main() => {
             match result {
-                Ok(_) => println!("SafeWalk finished"),
-                Err(e) => eprintln!("SafeWalk error: {}", e),
+                Ok(_) => {
+                    safewalk.stop().await;
+                    println!("SafeWalk finished");
+                },
+                Err(e) => {
+                    safewalk.stop().await;
+                    eprintln!("SafeWalk error: {}", e);
+                },
             }
         }
     }
