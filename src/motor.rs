@@ -57,7 +57,7 @@ impl Motor {
 
                         output_pin.set_high();
                         sleep(on_duration).await;
-                        output_pin.set_high();
+                        output_pin.set_low();
                         sleep(off_duration).await;
                     }
                 }

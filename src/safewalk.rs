@@ -142,11 +142,11 @@ impl SafeWalk {
         let mut gps = GpsSimulator::new(
             Point {
                 lat: 33.423528,
-                lon: -111.932611,
+                lon: -111.932806,
             },
             Point {
                 lat: 33.423528,
-                lon: -111.932806,
+                lon: -111.932611,
             }
         );
 
@@ -155,8 +155,6 @@ impl SafeWalk {
         let mut last_loop = Instant::now();
 
         loop {
-            self.vibration_system.test().await;
-        }
 
         // let response = self.gps.get().await;
             // println!("{:?}", response);
@@ -209,6 +207,8 @@ impl SafeWalk {
                 let speeds = VibrationSystem::get_speeds(relative_vector);
                 println!("Vibration - Front: {:.2}, Back: {:.2}, Left: {:.2}, Right: {:.2}",
                     speeds.front, speeds.back, speeds.left, speeds.right);
+
+                self.vibration_system.set_speeds(speeds).await;
             } else {
                 info!("No hazards found");
             }
@@ -227,6 +227,6 @@ impl SafeWalk {
 
             sleep(Duration::from_secs_f64(left.max(0.))).await;
             last_loop = Instant::now();
-        // }
+        }
     }
 }
