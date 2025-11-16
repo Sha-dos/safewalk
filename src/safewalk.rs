@@ -199,6 +199,7 @@ impl SafeWalk {
                 let relative_vector = Vector::new(relative_angle, hazard_vector.length);
 
                 println!("Hazard Detected: {:?}", reports.first().unwrap().hazard.location().unwrap().first().unwrap());
+                println!("Hazard tags: {:?}", reports.first().unwrap().hazard.tags());
                 println!("User heading (radians): {:.4} ({:.1}°)", user_heading, user_heading.to_degrees());
                 println!("Hazard absolute angle (radians): {:.4} ({:.1}°)", hazard_vector.rotation, hazard_vector.rotation.to_degrees());
                 println!("Relative angle: {:.4} rad ({:.1}°) - Negative=RIGHT, Positive=LEFT", relative_angle, relative_angle.to_degrees());

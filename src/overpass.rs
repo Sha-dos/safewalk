@@ -57,6 +57,14 @@ impl Element {
             Element::Relation { .. } => None,
         }
     }
+
+    pub fn tags(&self) -> &HashMap<String, String> {
+        match self {
+            Element::Node { tags, .. } => tags,
+            Element::Way { tags, .. } => tags,
+            Element::Relation { tags, .. } => tags,
+        }
+    }
 }
 
 #[derive(Debug, Deserialize, Serialize, Clone)]
