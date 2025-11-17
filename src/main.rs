@@ -4,6 +4,7 @@ mod hazard_analyzer;
 mod motor;
 mod overpass;
 mod safewalk;
+mod espeak;
 
 use crate::button::Button;
 use crate::motor::Motor;
