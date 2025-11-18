@@ -9,11 +9,16 @@ use std::fs;
 use std::path::PathBuf;
 use std::process::exit;
 use std::time::Duration;
+use tokio::task::AbortHandle;
 use tokio::time::{Instant, sleep};
+use crate::button::Button;
+use crate::espeak::Espeak;
 
 pub struct SafeWalk {
     vibration_system: VibrationSystem,
     gps: Gps,
+    button: Button,
+    speak_handle: Option<AbortHandle>,
 }
 
 struct VibrationSystemSpeeds {
@@ -119,6 +124,8 @@ impl SafeWalk {
         Self {
             vibration_system: VibrationSystem::new(26, 27, 7, 5),
             gps,
+            button: Button::new(4),
+            speak_handle: None,
         }
     }
 
@@ -153,6 +160,26 @@ impl SafeWalk {
         let mut prev_location = gps.get();
 
         let mut last_loop = Instant::now();
+
+        loop {
+            if self.button.is_pressed() && self.speak_handle.is_none() {
+                println!("Button pressed - starting speech");
+
+                let handle = tokio::spawn(async move {
+                    Espeak::speak("Test").await
+                }).abort_handle();
+
+                self.speak_handle = Some(handle);
+            } else if !self.button.is_pressed() {
+                if let Some(handle) = &self.speak_handle {
+                    println!("Button released - stopping speech");
+                    handle.abort();
+                    self.speak_handle = None;
+                }
+            }
+
+            sleep(Duration::from_millis(20)).await;
+        }
 
         loop {
 
