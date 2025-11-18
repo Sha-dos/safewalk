@@ -162,26 +162,6 @@ impl SafeWalk {
         let mut last_loop = Instant::now();
 
         loop {
-            if self.button.is_pressed() && self.speak_handle.is_none() {
-                println!("Button pressed - starting speech");
-
-                let handle = tokio::spawn(async move {
-                    Espeak::speak("Test").await
-                }).abort_handle();
-
-                self.speak_handle = Some(handle);
-            } else if !self.button.is_pressed() {
-                if let Some(handle) = &self.speak_handle {
-                    println!("Button released - stopping speech");
-                    handle.abort();
-                    self.speak_handle = None;
-                }
-            }
-
-            sleep(Duration::from_millis(20)).await;
-        }
-
-        loop {
 
         // let response = self.gps.get().await;
             // println!("{:?}", response);
@@ -225,20 +205,38 @@ impl SafeWalk {
 
                 let relative_vector = Vector::new(relative_angle, hazard_vector.length);
 
-                println!("Hazard Detected: {:?}", reports.first().unwrap().hazard.location().unwrap().first().unwrap());
-                println!("Hazard tags: {:?}", reports.first().unwrap().hazard.tags());
-                println!("User heading (radians): {:.4} ({:.1}°)", user_heading, user_heading.to_degrees());
-                println!("Hazard absolute angle (radians): {:.4} ({:.1}°)", hazard_vector.rotation, hazard_vector.rotation.to_degrees());
-                println!("Relative angle: {:.4} rad ({:.1}°) - Negative=RIGHT, Positive=LEFT", relative_angle, relative_angle.to_degrees());
-                println!("Relative Vector: {:?}", relative_vector);
+                if self.button.is_pressed() && self.speak_handle.is_none() {
+                    let handle = tokio::spawn(async move {
+                        let nearest = reports.first().unwrap();
+                        if nearest.hazard.tags().get("highway") == Some(&"crossing".to_string()) {
+                            Espeak::speak("Hazard ahead pedestrian crossing").await;
+                        } else {
+                            Espeak::speak("Hazard ahead").await;
+                        }
+                    }).abort_handle();
+
+                    self.speak_handle = Some(handle);
+                } else if !self.button.is_pressed() {
+                    if let Some(handle) = &self.speak_handle {
+                        handle.abort(); // Doesnt actually kill the process
+                        self.speak_handle = None;
+                    }
+                }
+
+                // println!("Hazard Detected: {:?}", reports.first().unwrap().hazard.location().unwrap().first().unwrap());
+                // println!("Hazard tags: {:?}", reports.first().unwrap().hazard.tags());
+                // println!("User heading (radians): {:.4} ({:.1}°)", user_heading, user_heading.to_degrees());
+                // println!("Hazard absolute angle (radians): {:.4} ({:.1}°)", hazard_vector.rotation, hazard_vector.rotation.to_degrees());
+                // println!("Relative angle: {:.4} rad ({:.1}°) - Negative=RIGHT, Positive=LEFT", relative_angle, relative_angle.to_degrees());
+                // println!("Relative Vector: {:?}", relative_vector);
 
                 let speeds = VibrationSystem::get_speeds(relative_vector);
-                println!("Vibration - Front: {:.2}, Back: {:.2}, Left: {:.2}, Right: {:.2}",
-                    speeds.front, speeds.back, speeds.left, speeds.right);
+                // println!("Vibration - Front: {:.2}, Back: {:.2}, Left: {:.2}, Right: {:.2}",
+                //     speeds.front, speeds.back, speeds.left, speeds.right);
 
                 self.vibration_system.set_speeds(speeds).await;
             } else {
-                info!("No hazards found");
+                // info!("No hazards found");
             }
 
             prev_location = Some(current_pos);
