@@ -194,3 +194,4 @@ async fn set_telemetry_value(
 
     json!({"status": "success"}).to_string().into_response()
 }
+
