@@ -8,14 +8,14 @@ pub struct HazardAnalyzer {
     elements: Vec<Element>,
 }
 
-#[derive(Debug, Deserialize, Serialize)]
+#[derive(Debug, Deserialize, Serialize, Clone)]
 pub enum HazardSeverity {
     Low,
     Medium,
     High,
 }
 
-#[derive(Debug, Deserialize, Serialize)]
+#[derive(Debug, Deserialize, Serialize, Clone)]
 pub struct HazardReport {
     pub hazard: Element,
     pub distance: f64,

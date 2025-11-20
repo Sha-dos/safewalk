@@ -13,6 +13,7 @@ use tokio::task::AbortHandle;
 use tokio::time::{Instant, sleep};
 use crate::button::Button;
 use crate::espeak::Espeak;
+use crate::networking::Telemetry;
 
 pub struct SafeWalk {
     vibration_system: VibrationSystem,
@@ -178,11 +179,14 @@ impl SafeWalk {
             analyzer.update_location(current_pos);
 
             println!("Current Location: {}, {}", current_pos.lat, current_pos.lon);
+            Telemetry::put_number("latitude", current_pos.lat).await;
+            Telemetry::put_number("longitude", current_pos.lon).await;
 
             let reports = analyzer.analyze();
 
             if let Some(mut reports) = reports {
                 reports.sort_by(|a, b| a.distance.partial_cmp(&b.distance).unwrap());
+                Telemetry::put_vec("hazards", reports.clone()).await;
 
                 let hazard_vector = reports.first().unwrap().vector;
                 let user_heading = location.1.unwrap();
