@@ -21,6 +21,7 @@ use tokio::signal;
 use tokio::sync::Notify;
 use tokio::time::sleep;
 use networking::start_ap;
+use crate::networking::Telemetry;
 
 #[tokio::main]
 async fn main() -> Result<()> {
@@ -41,6 +42,8 @@ async fn main() -> Result<()> {
     // println!("Fetched {} elements", data.elements.len());
 
     start_ap().await;
+
+    Telemetry::init(3000);
 
     let mut safewalk = SafeWalk::new().await;
 
