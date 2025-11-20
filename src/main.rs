@@ -5,6 +5,7 @@ mod motor;
 mod overpass;
 mod safewalk;
 mod espeak;
+mod networking;
 
 use crate::button::Button;
 use crate::motor::Motor;
@@ -19,6 +20,7 @@ use tokio::fs::read_to_string;
 use tokio::signal;
 use tokio::sync::Notify;
 use tokio::time::sleep;
+use networking::start_ap;
 
 #[tokio::main]
 async fn main() -> Result<()> {
@@ -37,6 +39,8 @@ async fn main() -> Result<()> {
     // };
     //
     // println!("Fetched {} elements", data.elements.len());
+
+    start_ap().await;
 
     let mut safewalk = SafeWalk::new().await;
 
