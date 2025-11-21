@@ -7,6 +7,7 @@ use tokio::time::sleep;
 
 pub struct Gps {
     uart: Uart,
+    buffer: Vec<u8>,
 }
 
 pub enum Command {
@@ -160,7 +161,10 @@ impl Gps {
     pub fn new() -> Self {
         let mut uart = Uart::with_path("/dev/ttyS0", 9600, Parity::None, 8, 1).unwrap();
 
-        Self { uart }
+        Self {
+            uart,
+            buffer: Vec::new(),
+        }
     }
 
     pub async fn init(&mut self) {
@@ -172,7 +176,7 @@ impl Gps {
         self.set_baud_rate(115200).unwrap();
         sleep(Duration::from_millis(100)).await;
 
-        self.send_command(Command::SetPosFix400ms).await.unwrap();
+        self.send_command(Command::SetPosFix100ms).await.unwrap();
         self.send_command(Command::SetNmeaOutput).await.unwrap();
     }
 
@@ -198,121 +202,107 @@ impl Gps {
     }
 
     pub async fn get(&mut self) -> GNRMC {
-        let mut buff_t = vec![0u8; 800];
-        self.uart.read(&mut buff_t).unwrap();
+        let mut attempt = 0;
+        const MAX_ATTEMPTS: u32 = 5;
 
-        println!("{}", String::from_utf8_lossy(&buff_t));
+        loop {
+            attempt += 1;
 
-        let mut add = 0;
-        let mut gps = GNRMC::default();
+            let mut buff_t = vec![0u8; 800];
+            let bytes_read = self.uart.read(&mut buff_t).unwrap_or(0);
 
-        while add < 800 - 71 {
-            if buff_t[add] == b'$'
-                && buff_t[add + 1] == b'G'
-                && (buff_t[add + 2] == b'N' || buff_t[add + 2] == b'P')
-                && buff_t[add + 3] == b'R'
-                && buff_t[add + 4] == b'M'
-                && buff_t[add + 5] == b'C'
-            {
-                let mut x = 0;
-                let mut z = 0;
-                while x < 12 {
-                    if buff_t[add + z] == b'\0' {
+            if bytes_read > 0 {
+                self.buffer.extend_from_slice(&buff_t[..bytes_read]);
+            }
+
+            let mut pos = 0;
+            while pos < self.buffer.len() {
+                if self.buffer[pos] == b'$' {
+                    let mut end = pos + 1;
+                    while end < self.buffer.len()
+                        && self.buffer[end] != b'\r'
+                        && self.buffer[end] != b'\n'
+                        && self.buffer[end] != b'$' {
+                        end += 1;
+                    }
+
+                    if end < self.buffer.len() && (self.buffer[end] == b'\r' || self.buffer[end] == b'\n') {
+                        let sentence_bytes = &self.buffer[pos..end];
+                        let sentence_str = String::from_utf8_lossy(sentence_bytes);
+
+                        if sentence_bytes.len() > 6
+                            && sentence_bytes[1] == b'G'
+                            && (sentence_bytes[2] == b'N' || sentence_bytes[2] == b'P')
+                            && sentence_bytes[3] == b'R'
+                            && sentence_bytes[4] == b'M'
+                            && sentence_bytes[5] == b'C'
+                        {
+                            let parts: Vec<&str> = sentence_str.split(',').collect();
+
+                            let mut gps = GNRMC::default();
+
+                            if parts.len() >= 3 {
+                                if parts.len() > 1 && parts[1].len() >= 6 {
+                                    let time_str = &parts[1][..6];
+                                    if let Ok(time) = time_str.parse::<u32>() {
+                                        gps.time_h = ((time / 10000 + 8) % 24) as u8;
+                                        gps.time_m = ((time / 100) % 100) as u8;
+                                        gps.time_s = (time % 100) as u8;
+                                    }
+                                }
+
+                                let status_str = if parts.len() > 2 { parts[2].trim() } else { "" };
+                                gps.status = if status_str == "A" { 1 } else { 0 };
+
+                                if gps.status == 1 {
+                                    if parts.len() > 3 && !parts[3].is_empty() {
+                                        if let Ok(lat) = parts[3].parse::<f64>() {
+                                            gps.lat = lat;
+                                        }
+                                    }
+
+                                    if parts.len() > 4 && !parts[4].is_empty() {
+                                        gps.lat_area = parts[4].as_bytes()[0];
+                                    }
+
+                                    if parts.len() > 5 && !parts[5].is_empty() {
+                                        if let Ok(lon) = parts[5].parse::<f64>() {
+                                            gps.lon = lon;
+                                        }
+                                    }
+
+                                    if parts.len() > 6 && !parts[6].is_empty() {
+                                        gps.lon_area = parts[6].as_bytes()[0];
+                                    }
+                                    println!("GPS FIX: lat={:.6}, lon={:.6}", gps.lat, gps.lon);
+                                }
+                            }
+
+                            let clear_until = if end + 1 < self.buffer.len() { end + 1 } else { end };
+                            self.buffer.drain(0..clear_until);
+
+                            return gps;
+                        } else {
+                            let clear_until = if end + 1 < self.buffer.len() { end + 1 } else { end };
+                            self.buffer.drain(0..clear_until);
+                        }
+                    } else {
                         break;
                     }
-                    if buff_t[add + z] == b',' {
-                        x += 1;
-                        match x {
-                            1 => {
-                                let mut time: u32 = 0;
-                                let mut i = 0;
-                                while buff_t[add + z + i + 1] != b'.' {
-                                    if buff_t[add + z + i + 1] == b'\0' {
-                                        break;
-                                    }
-                                    if buff_t[add + z + i + 1] == b',' {
-                                        break;
-                                    }
-                                    time = (buff_t[add + z + i + 1] - b'0') as u32 + time * 10;
-                                    i += 1;
-                                }
-                                gps.time_h = (time / 10000 + 8) as u8;
-                                gps.time_m = ((time / 100) % 100) as u8;
-                                gps.time_s = (time % 100) as u8;
-                                if gps.time_h >= 24 {
-                                    gps.time_h -= 24;
-                                }
-                            }
-                            2 => {
-                                if buff_t[add + z + 1] == b'A' {
-                                    gps.status = 1;
-                                } else {
-                                    gps.status = 0;
-                                }
-                            }
-                            3 => {
-                                let mut latitude: u32 = 0;
-                                let mut i = 0;
-                                while buff_t[add + z + i + 1] != b',' {
-                                    if buff_t[add + z + i + 1] == b'\0' {
-                                        break;
-                                    }
-                                    if buff_t[add + z + i + 1] == b'.' {
-                                        i += 1;
-                                        continue;
-                                    }
-                                    latitude =
-                                        (buff_t[add + z + i + 1] - b'0') as u32 + latitude * 10;
-                                    i += 1;
-                                }
-                                gps.lat = latitude as f64 / 1_000_000.0;
-                            }
-                            4 => {
-                                gps.lat_area = buff_t[add + z + 1];
-                            }
-                            5 => {
-                                let mut longitude: u32 = 0;
-                                let mut i = 0;
-                                while buff_t[add + z + i + 1] != b',' {
-                                    if buff_t[add + z + i + 1] == b'\0' {
-                                        break;
-                                    }
-                                    if buff_t[add + z + i + 1] == b'.' {
-                                        i += 1;
-                                        continue;
-                                    }
-                                    longitude =
-                                        (buff_t[add + z + i + 1] - b'0') as u32 + longitude * 10;
-                                    i += 1;
-                                }
-                                gps.lon = longitude as f64 / 1_000_000.0;
-                            }
-                            6 => {
-                                gps.lon_area = buff_t[add + z + 1];
-                            }
-                            _ => {}
-                        }
-                    }
-                    z += 1;
+                } else {
+                    pos += 1;
                 }
-                add = 0;
-                break;
             }
 
-            if buff_t[add + 5] == b'\0' {
-                add = 0;
-                break;
+            if attempt >= MAX_ATTEMPTS {
+                if self.buffer.len() > 2000 {
+                    self.buffer.clear();
+                }
+                return GNRMC::default();
             }
 
-            add += 1;
-
-            if add > 800 {
-                add = 0;
-                break;
-            }
+            sleep(Duration::from_millis(10)).await;
         }
-
-        gps
     }
 
     // Calculate bearing in radians to determine direction based off movement from 2 points

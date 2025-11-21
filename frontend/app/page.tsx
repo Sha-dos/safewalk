@@ -110,7 +110,6 @@ export default function Home() {
         {/* Header */}
         <div className="mb-8">
           <h1 className="text-4xl font-bold text-slate-900 mb-2">SafeWalk Telemetry</h1>
-          <p className="text-lg text-slate-600">Real-time Monitoring</p>
         </div>
 
         {/* Error Alert */}
@@ -121,17 +120,9 @@ export default function Home() {
           </Alert>
         )}
 
-        {/* Loading State */}
-        {loading && (
-          <Alert>
-            <Loader2 className="h-4 w-4 animate-spin" />
-            <AlertDescription>Loading telemetry data...</AlertDescription>
-          </Alert>
-        )}
-
         {/* Location Card */}
-        <Card className="border-2 border-blue-200 shadow-lg">
-          <CardHeader className="bg-gradient-to-r from-blue-50 to-blue-100">
+        <Card className="shadow-lg">
+          <CardHeader>
             <div className="flex items-center gap-2">
               <MapPin className="h-5 w-5 text-blue-600" />
               <CardTitle className="text-blue-900">Current Location</CardTitle>
@@ -157,7 +148,7 @@ export default function Home() {
 
         {/* Hazards Card */}
         <Card className="shadow-lg">
-          <CardHeader className="bg-gradient-to-r from-orange-50 to-red-100">
+          <CardHeader>
             <div className="flex items-center gap-2">
               <AlertTriangle className="h-5 w-5 text-red-600" />
               <CardTitle className="text-red-900">Nearby Hazards</CardTitle>
@@ -194,7 +185,7 @@ export default function Home() {
 
         {/* All Telemetry */}
         <Card className="shadow-lg">
-          <CardHeader className="bg-gradient-to-r from-purple-50 to-indigo-100">
+          <CardHeader>
             <div className="flex items-center gap-2">
               <Activity className="h-5 w-5 text-purple-600" />
               <CardTitle className="text-purple-900">All Telemetry Data</CardTitle>

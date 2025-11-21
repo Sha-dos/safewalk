@@ -41,9 +41,9 @@ impl Telemetry {
             .route("/status", get(status_check))
             .route("/telemetry", post(update_telemetry).get(get_telemetry))
             .route("/", get(frontend))
-            .route("/*path", get(frontend))
+            .route("/{*wildcard}", get(frontend))
             .route(
-                "/telemetry/:key",
+                "/telemetry/{key}",
                 get(get_telemetry_value).put(set_telemetry_value),
             )
             .layer(Extension(TELEMETRY_STATE.clone()))

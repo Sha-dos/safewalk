@@ -41,7 +41,7 @@ async fn main() -> Result<()> {
     //
     // println!("Fetched {} elements", data.elements.len());
 
-    start_ap().await;
+    // start_ap().await;
 
     Telemetry::init(3000);
 
