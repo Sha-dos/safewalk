@@ -222,11 +222,14 @@ impl Gps {
                     while end < self.buffer.len()
                         && self.buffer[end] != b'\r'
                         && self.buffer[end] != b'\n'
-                        && self.buffer[end] != b'$' {
+                        && self.buffer[end] != b'$'
+                    {
                         end += 1;
                     }
 
-                    if end < self.buffer.len() && (self.buffer[end] == b'\r' || self.buffer[end] == b'\n') {
+                    if end < self.buffer.len()
+                        && (self.buffer[end] == b'\r' || self.buffer[end] == b'\n')
+                    {
                         let sentence_bytes = &self.buffer[pos..end];
                         let sentence_str = String::from_utf8_lossy(sentence_bytes);
 
@@ -278,12 +281,20 @@ impl Gps {
                                 }
                             }
 
-                            let clear_until = if end + 1 < self.buffer.len() { end + 1 } else { end };
+                            let clear_until = if end + 1 < self.buffer.len() {
+                                end + 1
+                            } else {
+                                end
+                            };
                             self.buffer.drain(0..clear_until);
 
                             return gps;
                         } else {
-                            let clear_until = if end + 1 < self.buffer.len() { end + 1 } else { end };
+                            let clear_until = if end + 1 < self.buffer.len() {
+                                end + 1
+                            } else {
+                                end
+                            };
                             self.buffer.drain(0..clear_until);
                         }
                     } else {
@@ -339,7 +350,7 @@ impl Gps {
 pub struct GpsSimulator {
     starting_point: Point,
     ending_point: Point,
-    current_point: Point
+    current_point: Point,
 }
 
 impl GpsSimulator {
@@ -347,7 +358,7 @@ impl GpsSimulator {
         Self {
             starting_point,
             ending_point,
-            current_point: starting_point
+            current_point: starting_point,
         }
     }
 
@@ -385,7 +396,10 @@ impl GpsSimulator {
         }
     }
 
-    pub fn get_with_direction(&mut self, previous_position: Option<Point>) -> (Option<Point>, Option<f64>) {
+    pub fn get_with_direction(
+        &mut self,
+        previous_position: Option<Point>,
+    ) -> (Option<Point>, Option<f64>) {
         let current_position = self.get();
 
         if current_position.is_none() {

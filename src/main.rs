@@ -1,17 +1,19 @@
 mod button;
+mod espeak;
 mod gps;
 mod hazard_analyzer;
 mod motor;
+mod networking;
 mod overpass;
 mod safewalk;
-mod espeak;
-mod networking;
 
 use crate::button::Button;
 use crate::motor::Motor;
+use crate::networking::Telemetry;
 use crate::overpass::{OverpassResponse, Point, fetch};
 use crate::safewalk::SafeWalk;
 use anyhow::Result;
+use networking::start_ap;
 use std::env;
 use std::path::PathBuf;
 use std::sync::Arc;
@@ -20,8 +22,6 @@ use tokio::fs::read_to_string;
 use tokio::signal;
 use tokio::sync::Notify;
 use tokio::time::sleep;
-use networking::start_ap;
-use crate::networking::Telemetry;
 
 #[tokio::main]
 async fn main() -> Result<()> {

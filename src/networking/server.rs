@@ -1,14 +1,14 @@
 use axum::body::Body;
-use axum::http::{header, HeaderValue, Response, StatusCode};
+use axum::http::{HeaderValue, Response, StatusCode, header};
 use axum::response::IntoResponse;
 use axum::{
+    Router,
     extract::{Extension, Json, Path},
     routing::{get, post},
-    Router,
 };
 use lazy_static::lazy_static;
 use serde::{Deserialize, Serialize};
-use serde_json::{json, Value};
+use serde_json::{Value, json};
 use std::net::SocketAddr;
 use std::path::PathBuf;
 use std::sync::Arc;
@@ -194,4 +194,3 @@ async fn set_telemetry_value(
 
     json!({"status": "success"}).to_string().into_response()
 }
-

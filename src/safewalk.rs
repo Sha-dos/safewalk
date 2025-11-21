@@ -1,10 +1,13 @@
-use std::f64::consts::PI;
+use crate::button::Button;
+use crate::espeak::Espeak;
 use crate::gps::{Gps, GpsSimulator, Vector};
 use crate::hazard_analyzer::HazardAnalyzer;
 use crate::motor::Motor;
+use crate::networking::Telemetry;
 use crate::overpass::{OverpassResponse, Point};
 use anyhow::Result;
 use log::{info, warn};
+use std::f64::consts::PI;
 use std::fs;
 use std::io::Write;
 use std::path::PathBuf;
@@ -12,9 +15,6 @@ use std::process::exit;
 use std::time::Duration;
 use tokio::task::AbortHandle;
 use tokio::time::{Instant, sleep};
-use crate::button::Button;
-use crate::espeak::Espeak;
-use crate::networking::Telemetry;
 
 pub struct SafeWalk {
     vibration_system: VibrationSystem,
@@ -92,8 +92,8 @@ impl VibrationSystem {
 
         let front = forward_component.max(0.0);
         let back = (-forward_component).max(0.0);
-        let left = side_component.max(0.0);      // positive sin = left
-        let right = (-side_component).max(0.0);  // negative sin = right
+        let left = side_component.max(0.0); // positive sin = left
+        let right = (-side_component).max(0.0); // negative sin = right
 
         VibrationSystemSpeeds {
             front,
@@ -161,7 +161,6 @@ impl SafeWalk {
         let mut last_loop = Instant::now();
 
         loop {
-
             println!("{}", "=".repeat(50));
             // let response = self.gps.get().await;
             // println!("{:?}", response);
@@ -180,7 +179,10 @@ impl SafeWalk {
                 prev_location = pos; // Update previous location for next bearing calculation
                 pos
             } else {
-                println!("GPS has no valid fix (status={}), using previous location", location.0.status);
+                println!(
+                    "GPS has no valid fix (status={}), using previous location",
+                    location.0.status
+                );
                 prev_location
             };
 
@@ -205,7 +207,8 @@ impl SafeWalk {
                     } else {
                         Espeak::speak("No hazards detected").await;
                     }
-                }).abort_handle();
+                })
+                .abort_handle();
 
                 self.speak_handle = Some(handle);
             } else if !self.button.is_pressed() {
@@ -240,11 +243,33 @@ impl SafeWalk {
 
                 let relative_vector = Vector::new(relative_angle, hazard_vector.length);
 
-                println!("Hazard Detected: {:?}", reports.first().unwrap().hazard.location().unwrap().first().unwrap());
+                println!(
+                    "Hazard Detected: {:?}",
+                    reports
+                        .first()
+                        .unwrap()
+                        .hazard
+                        .location()
+                        .unwrap()
+                        .first()
+                        .unwrap()
+                );
                 println!("Hazard tags: {:?}", reports.first().unwrap().hazard.tags());
-                println!("User heading (radians): {:.4} ({:.1}°)", user_heading, user_heading.to_degrees());
-                println!("Hazard absolute angle (radians): {:.4} ({:.1}°)", hazard_vector.rotation, hazard_vector.rotation.to_degrees());
-                println!("Relative angle: {:.4} rad ({:.1}°) - Negative=RIGHT, Positive=LEFT", relative_angle, relative_angle.to_degrees());
+                println!(
+                    "User heading (radians): {:.4} ({:.1}°)",
+                    user_heading,
+                    user_heading.to_degrees()
+                );
+                println!(
+                    "Hazard absolute angle (radians): {:.4} ({:.1}°)",
+                    hazard_vector.rotation,
+                    hazard_vector.rotation.to_degrees()
+                );
+                println!(
+                    "Relative angle: {:.4} rad ({:.1}°) - Negative=RIGHT, Positive=LEFT",
+                    relative_angle,
+                    relative_angle.to_degrees()
+                );
                 println!("Relative Vector: {:?}", relative_vector);
 
                 let speeds = VibrationSystem::get_speeds(relative_vector);
@@ -255,7 +280,6 @@ impl SafeWalk {
             } else {
                 // info!("No hazards found");
             }
-
 
             println!("{}", "=".repeat(50));
             print!("\n\n\n");
