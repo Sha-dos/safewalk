@@ -23,11 +23,18 @@ pub struct SafeWalk {
     speak_handle: Option<AbortHandle>,
 }
 
+#[derive(Clone)]
 struct VibrationSystemSpeeds {
     front: f64,
     back: f64,
     left: f64,
     right: f64,
+}
+
+impl VibrationSystemSpeeds {
+    pub fn vec(&self) -> Vec<f64> {
+        vec![self.front, self.right, self.back, self.left]
+    }
 }
 
 struct VibrationSystem {
@@ -191,6 +198,7 @@ impl SafeWalk {
             println!("Current Location: {}, {}", current_pos.lat, current_pos.lon);
             Telemetry::put_number("latitude", current_pos.lat).await;
             Telemetry::put_number("longitude", current_pos.lon).await;
+            Telemetry::put_number("heading", location.1.unwrap_or(0.0)).await;
 
             let reports = analyzer.analyze();
 
@@ -276,7 +284,8 @@ impl SafeWalk {
                 // println!("Vibration - Front: {:.2}, Back: {:.2}, Left: {:.2}, Right: {:.2}",
                 //     speeds.front, speeds.back, speeds.left, speeds.right);
 
-                self.vibration_system.set_speeds(speeds).await;
+                self.vibration_system.set_speeds(speeds.clone()).await;
+                Telemetry::put_vec("speeds", speeds.vec()).await;
             } else {
                 // info!("No hazards found");
             }

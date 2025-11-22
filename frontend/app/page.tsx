@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { AlertCircle, MapPin, AlertTriangle, Activity, Loader2 } from "lucide-react";
+import {AlertCircle, MapPin, AlertTriangle, Activity, Loader2, Vibrate} from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 
 type Hazard = {
@@ -17,6 +17,8 @@ type Hazard = {
 export default function Home() {
   const [latitude, setLatitude] = useState<string | null>(null);
   const [longitude, setLongitude] = useState<string | null>(null);
+  const [heading, setHeading] = useState<string | null>(null);
+  const [speeds, setSpeeds] = useState<string[] | null>(null);
   const [hazards, setHazards] = useState<Hazard[]>([]);
   const [allTelemetry, setAllTelemetry] = useState<Record<string, string>>({});
   const [error, setError] = useState<string | null>(null);
@@ -38,6 +40,18 @@ export default function Home() {
         if (lonRes.ok) {
           const lonText = await lonRes.text();
           if (!cancelled) setLongitude(lonText === "null" ? null : lonText);
+        }
+
+        const headingRes = await fetch("/telemetry/heading", { cache: "no-store" });
+        if (headingRes.ok) {
+          const headingText = await headingRes.text();
+          if (!cancelled) setHeading(headingText === "null" ? null : headingText);
+        }
+
+        const speedsRes = await fetch("/telemetry/speeds", { cache: "no-store" });
+        if (speedsRes.ok) {
+          const speedsText = await speedsRes.json();
+          if (!cancelled) setSpeeds(speedsText === "null" ? null : speedsText);
         }
 
         const hazardsRes = await fetch("/telemetry/hazards", { cache: "no-store" });
@@ -129,7 +143,7 @@ export default function Home() {
             </div>
           </CardHeader>
           <CardContent className="pt-6">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
               <div>
                 <p className="text-sm font-medium text-slate-600 mb-2">Latitude</p>
                 <p className="text-3xl font-mono font-bold text-slate-900">
@@ -140,6 +154,12 @@ export default function Home() {
                 <p className="text-sm font-medium text-slate-600 mb-2">Longitude</p>
                 <p className="text-3xl font-mono font-bold text-slate-900">
                   {longitude || "—"}
+                </p>
+              </div>
+              <div>
+                <p className="text-sm font-medium text-slate-600 mb-2">Heading</p>
+                <p className="text-3xl font-mono font-bold text-slate-900">
+                  {heading || "—"}
                 </p>
               </div>
             </div>
@@ -180,6 +200,44 @@ export default function Home() {
                 ))}
               </div>
             )}
+          </CardContent>
+        </Card>
+
+        {/* Motor Card */}
+        <Card className="shadow-lg">
+          <CardHeader>
+            <div className="flex items-center gap-2">
+              <Vibrate className="h-5 w-5 text-green-700" />
+              <CardTitle className="text-green-700">Motor Speeds</CardTitle>
+            </div>
+          </CardHeader>
+          <CardContent className="pt-6">
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+              <div>
+                <p className="text-sm font-medium text-slate-600 mb-2">Front</p>
+                <p className="text-3xl font-mono font-bold text-slate-900">
+                  {speeds && speeds[0]}
+                </p>
+              </div>
+              <div>
+                <p className="text-sm font-medium text-slate-600 mb-2">Right</p>
+                <p className="text-3xl font-mono font-bold text-slate-900">
+                  {speeds && speeds[1]}
+                </p>
+              </div>
+              <div>
+                <p className="text-sm font-medium text-slate-600 mb-2">Back</p>
+                <p className="text-3xl font-mono font-bold text-slate-900">
+                  {speeds && speeds[2]}
+                </p>
+              </div>
+              <div>
+                <p className="text-sm font-medium text-slate-600 mb-2">Left</p>
+                <p className="text-3xl font-mono font-bold text-slate-900">
+                  {speeds && speeds[3]}
+                </p>
+              </div>
+            </div>
           </CardContent>
         </Card>
 
