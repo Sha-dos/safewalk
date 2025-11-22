@@ -168,7 +168,7 @@ impl SafeWalk {
         let mut last_loop = Instant::now();
 
         loop {
-            println!("{}", "=".repeat(50));
+            // println!("{}", "=".repeat(50));
             // let response = self.gps.get().await;
             // println!("{:?}", response);
 
@@ -186,7 +186,7 @@ impl SafeWalk {
                 prev_location = pos; // Update previous location for next bearing calculation
                 pos
             } else {
-                println!(
+                info!(
                     "GPS has no valid fix (status={}), using previous location",
                     location.0.status
                 );
@@ -195,7 +195,7 @@ impl SafeWalk {
 
             analyzer.update_location(current_pos);
 
-            println!("Current Location: {}, {}", current_pos.lat, current_pos.lon);
+            info!("Current Location: {}, {}", current_pos.lat, current_pos.lon);
             Telemetry::put_number("latitude", current_pos.lat).await;
             Telemetry::put_number("longitude", current_pos.lon).await;
             Telemetry::put_number("heading", location.1.unwrap_or(0.0)).await;
@@ -251,7 +251,7 @@ impl SafeWalk {
 
                 let relative_vector = Vector::new(relative_angle, hazard_vector.length);
 
-                println!(
+                info!(
                     "Hazard Detected: {:?}",
                     reports
                         .first()
@@ -262,23 +262,23 @@ impl SafeWalk {
                         .first()
                         .unwrap()
                 );
-                println!("Hazard tags: {:?}", reports.first().unwrap().hazard.tags());
-                println!(
+                info!("Hazard tags: {:?}", reports.first().unwrap().hazard.tags());
+                info!(
                     "User heading (radians): {:.4} ({:.1}°)",
                     user_heading,
                     user_heading.to_degrees()
                 );
-                println!(
+                info!(
                     "Hazard absolute angle (radians): {:.4} ({:.1}°)",
                     hazard_vector.rotation,
                     hazard_vector.rotation.to_degrees()
                 );
-                println!(
+                info!(
                     "Relative angle: {:.4} rad ({:.1}°) - Negative=RIGHT, Positive=LEFT",
                     relative_angle,
                     relative_angle.to_degrees()
                 );
-                println!("Relative Vector: {:?}", relative_vector);
+                info!("Relative Vector: {:?}", relative_vector);
 
                 let speeds = VibrationSystem::get_speeds(relative_vector);
                 // println!("Vibration - Front: {:.2}, Back: {:.2}, Left: {:.2}, Right: {:.2}",
@@ -290,12 +290,12 @@ impl SafeWalk {
                 // info!("No hazards found");
             }
 
-            println!("{}", "=".repeat(50));
-            print!("\n\n\n");
+            // println!("{}", "=".repeat(50));
+            // print!("\n\n\n");
 
             let dt = last_loop.elapsed();
             let elapsed = dt.as_secs_f64();
-            let left = 1. / 2. - elapsed;
+            let left = 1. / 10. - elapsed;
 
             if left < 0. {
                 warn!("Loop overrun: {} ms", -left * 1000.);

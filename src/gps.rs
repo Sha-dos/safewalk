@@ -3,6 +3,7 @@ use anyhow::Result;
 use rppal::uart::{Parity, Uart};
 use serde::{Deserialize, Serialize};
 use std::time::Duration;
+use log::info;
 use tokio::time::sleep;
 
 pub struct Gps {
@@ -168,10 +169,11 @@ impl Gps {
     }
 
     pub async fn init(&mut self) {
+        sleep(Duration::from_millis(250)).await;
         self.send_command(Command::SetNmeaBaudrate115200)
             .await
             .unwrap();
-        sleep(Duration::from_millis(100)).await;
+        sleep(Duration::from_millis(250)).await;
 
         self.set_baud_rate(115200).unwrap();
         sleep(Duration::from_millis(100)).await;
@@ -277,7 +279,7 @@ impl Gps {
                                     if parts.len() > 6 && !parts[6].is_empty() {
                                         gps.lon_area = parts[6].as_bytes()[0];
                                     }
-                                    println!("GPS FIX: lat={:.6}, lon={:.6}", gps.lat, gps.lon);
+                                    info!("GPS FIX: lat={:.6}, lon={:.6}", gps.lat, gps.lon);
                                 }
                             }
 

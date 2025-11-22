@@ -12,6 +12,7 @@ use serde_json::{Value, json};
 use std::net::SocketAddr;
 use std::path::PathBuf;
 use std::sync::Arc;
+use log::info;
 use tokio::fs::File;
 use tokio::io::AsyncReadExt;
 use tokio::sync::{Mutex, RwLock};
@@ -50,7 +51,7 @@ impl Telemetry {
             .layer(CorsLayer::very_permissive());
 
         let addr = SocketAddr::from(([0, 0, 0, 0], port));
-        println!("Listening on {}", addr);
+        info!("Listening on {}", addr);
 
         tokio::spawn(async move {
             let listener = tokio::net::TcpListener::bind(addr).await.unwrap();

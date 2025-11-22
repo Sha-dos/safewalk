@@ -25,6 +25,7 @@ use tokio::time::sleep;
 
 #[tokio::main]
 async fn main() -> Result<()> {
+    tracing_subscriber::fmt::init();
     // let args = env::args().collect::<Vec<String>>();
     // let data = if args.contains(&"--cache".to_string()) {
     //     println!("Using cached data");
