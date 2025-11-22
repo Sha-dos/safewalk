@@ -5,21 +5,12 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {AlertCircle, MapPin, AlertTriangle, Activity, Loader2, Vibrate} from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 
-type Hazard = {
-  id: string;
-  lat: number;
-  lon: number;
-  type: string;
-  severity: "low" | "medium" | "high";
-  description: string;
-};
-
 export default function Home() {
   const [latitude, setLatitude] = useState<string | null>(null);
   const [longitude, setLongitude] = useState<string | null>(null);
   const [heading, setHeading] = useState<string | null>(null);
   const [speeds, setSpeeds] = useState<string[] | null>(null);
-  const [hazards, setHazards] = useState<Hazard[]>([]);
+  const [hazards, setHazards] = useState<any[]>([]);
   const [allTelemetry, setAllTelemetry] = useState<Record<string, string>>({});
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
@@ -84,39 +75,13 @@ export default function Home() {
     };
 
     fetchTelemetry();
-    const interval = setInterval(fetchTelemetry, 1000);
+    const interval = setInterval(fetchTelemetry, 100);
 
     return () => {
       cancelled = true;
       clearInterval(interval);
     };
   }, []);
-
-  const getSeverityColor = (severity: string) => {
-    switch (severity) {
-      case "high":
-        return "border-red-500 bg-red-50";
-      case "medium":
-        return "border-amber-500 bg-amber-50";
-      case "low":
-        return "border-green-500 bg-green-50";
-      default:
-        return "border-gray-200 bg-white";
-    }
-  };
-
-  const getSeverityBadgeColor = (severity: string) => {
-    switch (severity) {
-      case "high":
-        return "bg-red-100 text-red-800";
-      case "medium":
-        return "bg-amber-100 text-amber-800";
-      case "low":
-        return "bg-green-100 text-green-800";
-      default:
-        return "bg-gray-100 text-gray-800";
-    }
-  };
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 p-6">
