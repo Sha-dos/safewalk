@@ -178,28 +178,6 @@ export default function Home() {
             </div>
           </CardHeader>
           <CardContent className="pt-6">
-            {hazards.length === 0 ? (
-              <p className="text-slate-600">No hazards detected</p>
-            ) : (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                {hazards.map((hazard) => (
-                  <Card key={hazard.id} className={`border-2 ${getSeverityColor(hazard.severity)}`}>
-                    <CardContent className="pt-4">
-                      <div className="flex justify-between items-start mb-3">
-                        <h3 className="font-bold text-slate-900 text-sm">{hazard.type}</h3>
-                        <span className={`text-xs font-semibold px-2 py-1 rounded ${getSeverityBadgeColor(hazard.severity)}`}>
-                          {hazard.severity.toUpperCase()}
-                        </span>
-                      </div>
-                      <p className="text-sm text-slate-700 mb-3">{hazard.description}</p>
-                      <p className="text-xs text-slate-500 font-mono">
-                        {hazard.lat.toFixed(6)}, {hazard.lon.toFixed(6)}
-                      </p>
-                    </CardContent>
-                  </Card>
-                ))}
-              </div>
-            )}
           </CardContent>
         </Card>
 

@@ -281,8 +281,8 @@ impl SafeWalk {
                 info!("Relative Vector: {:?}", relative_vector);
 
                 let speeds = VibrationSystem::get_speeds(relative_vector);
-                // println!("Vibration - Front: {:.2}, Back: {:.2}, Left: {:.2}, Right: {:.2}",
-                //     speeds.front, speeds.back, speeds.left, speeds.right);
+                info!("Vibration - Front: {:.2}, Back: {:.2}, Left: {:.2}, Right: {:.2}",
+                    speeds.front, speeds.back, speeds.left, speeds.right);
 
                 self.vibration_system.set_speeds(speeds.clone()).await;
                 Telemetry::put_vec("speeds", speeds.vec()).await;
