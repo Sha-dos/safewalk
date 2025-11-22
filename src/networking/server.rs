@@ -13,6 +13,7 @@ use std::net::SocketAddr;
 use std::path::PathBuf;
 use std::sync::Arc;
 use log::info;
+use sysinfo::System;
 use tokio::fs::File;
 use tokio::io::AsyncReadExt;
 use tokio::sync::{Mutex, RwLock};
@@ -32,6 +33,8 @@ lazy_static! {
     static ref TELEMETRY_STATE: Arc<Mutex<AppState>> = Arc::new(Mutex::new(AppState {
         telemetry_data: RwLock::new(vec![]),
     }));
+
+    static ref SYSTEM_STATS: Arc<Mutex<System>> = Arc::new(Mutex::new(System::new()));
 }
 
 pub struct Telemetry;
@@ -47,6 +50,7 @@ impl Telemetry {
                 "/telemetry/{key}",
                 get(get_telemetry_value).put(set_telemetry_value),
             )
+            .route("/health", get(system_health))
             .layer(Extension(TELEMETRY_STATE.clone()))
             .layer(CorsLayer::very_permissive());
 
@@ -194,4 +198,18 @@ async fn set_telemetry_value(
     }
 
     json!({"status": "success"}).to_string().into_response()
+}
+
+async fn system_health() -> impl IntoResponse {
+    let mut stats = SYSTEM_STATS.lock().await;
+
+    stats.refresh_all();
+
+    let cpu_usage = stats.global_cpu_usage();
+    let available_memory = stats.available_memory();
+
+    json!({
+        "cpu_usage": cpu_usage,
+        "available_memory": available_memory,
+    }).to_string().into_response()
 }

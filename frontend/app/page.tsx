@@ -2,18 +2,24 @@
 
 import { useEffect, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import {AlertCircle, MapPin, AlertTriangle, Activity, Loader2, Vibrate} from "lucide-react";
+import {AlertCircle, MapPin, AlertTriangle, Activity, Loader2, Vibrate, Heart} from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+
+interface SystemStats {
+  cpu_usage: number;
+  available_memory: number;
+}
 
 export default function Home() {
   const [latitude, setLatitude] = useState<string | null>(null);
   const [longitude, setLongitude] = useState<string | null>(null);
   const [heading, setHeading] = useState<string | null>(null);
   const [speeds, setSpeeds] = useState<string[] | null>(null);
-  const [hazards, setHazards] = useState<any[]>([]);
+  const [hazards, setHazards] = useState<string[]>([]);
   const [allTelemetry, setAllTelemetry] = useState<Record<string, string>>({});
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  const [systemStatus, setSystemStatus] = useState<SystemStats | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -43,6 +49,12 @@ export default function Home() {
         if (speedsRes.ok) {
           const speedsText = await speedsRes.json();
           if (!cancelled) setSpeeds(speedsText === "null" ? null : speedsText);
+        }
+
+        const statsRes = await fetch("/health", { cache: "no-store" });
+        if (statsRes.ok) {
+          const healthJson = await statsRes.json();
+          if (!cancelled) setSystemStatus(healthJson === "null" ? null : healthJson);
         }
 
         const hazardsRes = await fetch("/telemetry/hazards", { cache: "no-store" });
@@ -209,6 +221,32 @@ export default function Home() {
                 ))}
               </div>
             )}
+          </CardContent>
+        </Card>
+
+        {/* Health Card */}
+        <Card className="shadow-lg">
+          <CardHeader>
+            <div className="flex items-center gap-2">
+              <Heart className="h-5 w-5 text-red-600" />
+              <CardTitle className="text-red-600">System Health</CardTitle>
+            </div>
+          </CardHeader>
+          <CardContent className="pt-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div>
+                <p className="text-sm font-medium text-slate-600 mb-2">CPU Usage</p>
+                <p className="text-3xl font-mono font-bold text-slate-900">
+                  {systemStatus?.cpu_usage.toFixed(2) || "—"}
+                </p>
+              </div>
+              <div>
+                <p className="text-sm font-medium text-slate-600 mb-2">Available Memory</p>
+                <p className="text-3xl font-mono font-bold text-slate-900">
+                  {systemStatus?.available_memory || "—"}
+                </p>
+              </div>
+            </div>
           </CardContent>
         </Card>
       </div>
