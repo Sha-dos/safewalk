@@ -313,7 +313,6 @@ impl Gps {
                 if self.buffer.len() > 2000 {
                     self.buffer.clear();
                 }
-                return GNRMC::default();
             }
 
             sleep(Duration::from_millis(10)).await;
