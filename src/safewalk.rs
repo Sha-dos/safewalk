@@ -231,7 +231,7 @@ impl SafeWalk {
                 Telemetry::put_vec("hazards", reports.clone()).await;
 
                 let hazard_vector = reports.first().unwrap().vector;
-                let user_heading = location.1.unwrap();
+                let user_heading = location.1.unwrap_or(0.0);
 
                 let mut relative_angle = hazard_vector.rotation - user_heading;
 

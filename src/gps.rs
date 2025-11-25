@@ -169,14 +169,14 @@ impl Gps {
     }
 
     pub async fn init(&mut self) {
-        sleep(Duration::from_millis(250)).await;
-        self.send_command(Command::SetNmeaBaudrate115200)
-            .await
-            .unwrap();
-        sleep(Duration::from_millis(250)).await;
-
-        self.set_baud_rate(115200).unwrap();
-        sleep(Duration::from_millis(100)).await;
+        // sleep(Duration::from_millis(250)).await;
+        // self.send_command(Command::SetNmeaBaudrate115200)
+        //     .await
+        //     .unwrap();
+        // sleep(Duration::from_millis(250)).await;
+        //
+        // self.set_baud_rate(115200).unwrap();
+        // sleep(Duration::from_millis(100)).await;
 
         self.send_command(Command::SetPosFix100ms).await.unwrap();
         self.send_command(Command::SetNmeaOutput).await.unwrap();
@@ -216,6 +216,8 @@ impl Gps {
             if bytes_read > 0 {
                 self.buffer.extend_from_slice(&buff_t[..bytes_read]);
             }
+
+            // println!("{}", String::from_utf8_lossy(&self.buffer));
 
             let mut pos = 0;
             while pos < self.buffer.len() {
